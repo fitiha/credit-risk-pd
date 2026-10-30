@@ -1,0 +1,90 @@
+"""Fix the data problems listed in docs/issue_log.md.
+
+Each step below carries the issue number it implements. Only the fitted
+values (the sub-grade median rates) depend on data; they are learned from
+loans issued up to the fit cutoff so 2015 loans cannot influence them.
+"""
+import numpy as np
+import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
+
+from credit_risk.io import FIT_CUTOFF, parse_dates
+
+STATE_NAMES = {
+    "california": "CA", "florida": "FL", "georgia": "GA", "illinois": "IL",
+    "michigan": "MI", "new jersey": "NJ", "new york": "NY",
+    "north carolina": "NC", "ohio": "OH", "pennsylvania": "PA",
+    "texas": "TX", "virginia": "VA",
+}
+LEAKY_COLUMNS = ["bureau_recovery_flag"]  # issue 7: copy of a servicing column
+
+
+class Cleaner(BaseEstimator, TransformerMixin):
+    """Turn a raw application+bureau table into a cleaned one."""
+
+    def __init__(self, income_thousands_below=1000, placeholder_rate=6.0,
+                 amount_ratio=10.0, amount_ratio_tol=0.5):
+        self.income_thousands_below = income_thousands_below
+        self.placeholder_rate = placeholder_rate
+        self.amount_ratio = amount_ratio
+        self.amount_ratio_tol = amount_ratio_tol
+
+    def fit(self, X, y=None):
+        """Learn median interest rate per sub_grade from pre-cutoff loans."""
+        issue = parse_dates(X["issue_d"])
+        pre = X[(issue <= FIT_CUTOFF) & (X["int_rate"] != self.placeholder_rate)]
+        self.rate_by_subgrade_ = pre.groupby("sub_grade")["int_rate"].median().to_dict()
+        self.rate_by_grade_ = pre.groupby("grade")["int_rate"].median().to_dict()
+        return self
+
+    def transform(self, X):
+        d = X.copy()
+        d = d.drop(columns=[c for c in LEAKY_COLUMNS if c in d])
+
+        # issues 3, 4: mixed date formats
+        d["issue_d"] = parse_dates(d["issue_d"])
+        d["earliest_cr_line"] = parse_dates(d["earliest_cr_line"])
+        # issue 6: " 36 months" -> 36
+        d["term"] = d["term"].astype(str).str.extract(r"(\d+)")[0].astype(int)
+        # issue 5: state codes
+        state = d["addr_state"].astype(str).str.strip()
+        d["addr_state"] = state.str.lower().map(STATE_NAMES).fillna(state.str.upper())
+        # issue 2: job title case and spaces (grouping happens in A5)
+        d["emp_title"] = d["emp_title"].str.strip().str.lower()
+
+        # issue 8: loan amount entered 10x too large. The installment is right,
+        # so the amortised payment implied by the amount is ~10x the installment.
+        r = d["int_rate"] / 1200
+        implied = d["loan_amnt"] * r / (1 - (1 + r) ** -d["term"])
+        ratio = implied / d["installment"]
+        shifted = (ratio - self.amount_ratio).abs() < self.amount_ratio_tol
+        d["loan_amnt_fixed"] = shifted
+        d.loc[shifted, "loan_amnt"] = d.loc[shifted, "loan_amnt"] / 10
+
+        # issue 10: income typed in thousands
+        small = d["annual_inc"] < self.income_thousands_below
+        d["annual_inc_fixed"] = small
+        d.loc[small, "annual_inc"] = d.loc[small, "annual_inc"] * 1000
+
+        # issue 12: FICO low and high swapped
+        swap = d["fico_range_low"] > d["fico_range_high"]
+        lo, hi = d["fico_range_low"].copy(), d["fico_range_high"].copy()
+        d.loc[swap, "fico_range_low"], d.loc[swap, "fico_range_high"] = hi[swap], lo[swap]
+
+        # issue 13: credit history cannot start after the loan -> missing + flag
+        bad_date = d["earliest_cr_line"] > d["issue_d"]
+        d["earliest_cr_line_invalid"] = bad_date
+        d.loc[bad_date, "earliest_cr_line"] = pd.NaT
+
+        # issue 14: revol_util sign flip is provable (fix); bc_util is not (missing)
+        d["revol_util"] = d["revol_util"].abs()
+        bad_bc = d["bc_util"] < 0
+        d["bc_util_invalid"] = bad_bc
+        d.loc[bad_bc, "bc_util"] = np.nan
+
+        # issue 19: placeholder interest rate -> median of the sub_grade
+        ph = d["int_rate"] == self.placeholder_rate
+        fill = d["sub_grade"].map(self.rate_by_subgrade_).fillna(d["grade"].map(self.rate_by_grade_))
+        d["int_rate_imputed"] = ph
+        d.loc[ph, "int_rate"] = fill[ph]
+        return d
