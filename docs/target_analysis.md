@@ -8,6 +8,8 @@ Reproduce: `uv run python scripts/a2_target_analysis.py` (tables in `reports/tab
 The classes are imbalanced but not extreme, so no resampling is planned (see DESIGN.md).
 
 ## By loan term and by year (95% confidence intervals)
+Monthly rates are in `reports/tables/a2_default_by_month.csv` (36 months, 263-1,794 loans each, so monthly intervals are wide: up to 8 points). The conclusions are drawn from half-years, where intervals are narrow.
+
 | Group | Loans | Default rate | 95% CI |
 |---|---|---|---|
 | 36 months | 22,328 | 14.0% | 13.6 - 14.5 |
@@ -31,7 +33,8 @@ The label was built in March 2019 from loans that had ended. Loans still being r
 | 2015 H2 | 100% | 14.5% | 0% | 37.9% |
 
 - **36-month loans are safe.** Every one had reached its scheduled end, so each is a full outcome. Their default rate moves only from 12-13% to 14-15%.
-- **60-month loans from mid-2014 on are biased upward.** None had reached their scheduled end. A loan like this is in the data only if it ended early, and the usual way a loan ends early is default. Loans being paid steadily were removed. Of 7,672 60-month loans, 5,760 (75%) were due after March 2019; their default rate is 34.9% against 24.7% for the loans that had finished. The two groups also differ in issue date, so this gap is partly real deterioration, but the sharp jump exactly where loans stop being finished is what censoring produces.
+- **60-month loans from mid-2014 on are likely biased upward.** None had reached their scheduled end. Only loans that *ended before March 2019* were kept; loans still being paid were removed. Of the 5,183 60-month loans issued since July 2014, 65% were kept because they were **repaid early** and 35% because they **defaulted**. Defaults tend to come sooner (median 18 months after issue vs 23 for early repayments). The loans removed are the ones still being paid in March 2019, and most of those would eventually have been repaid in full. Taking them out leaves a sample that has too few "paid" loans, which pushes the default rate up. We cannot measure how much, because we do not see how those removed loans ended.
+- Compare the 60-month loans that had finished (24.7% default) with the unfinished ones (34.9%). The two groups also differ in issue date, so part of the gap is real deterioration, but the jump appears exactly where loans stop being finished.
 - A 36-month default rate rising by about 2 points suggests part of the 60-month rise is real, but we cannot separate the two with this data.
 
 ## What this means for the later work
