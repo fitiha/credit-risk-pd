@@ -28,6 +28,9 @@ by_half = rate_table(d, ["half", "term"])
 by_half["share_matured"] = by_half.apply(
     lambda r: d[(d.half == r.half) & (d.term == r.term)].matured.mean(), axis=1)
 by_half.to_csv(TAB / "a2_default_by_half_and_term.csv", index=False)
+d["month"] = d.issue_d.dt.to_period("M").astype(str)
+rate_table(d, "month").to_csv(TAB / "a2_default_by_month.csv", index=False)
+rate_table(d, ["month", "term"]).to_csv(TAB / "a2_default_by_month_and_term.csv", index=False)
 rate_table(d, "term").to_csv(TAB / "a2_default_by_term.csv", index=False)
 rate_table(d.assign(year=d.issue_d.dt.year), "year").to_csv(TAB / "a2_default_by_year.csv", index=False)
 
