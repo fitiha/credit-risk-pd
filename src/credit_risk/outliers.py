@@ -8,6 +8,7 @@ transformer so the same rule applies at scoring time.
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
+from credit_risk.frames import add_columns
 from credit_risk.io import FIT_CUTOFF
 
 AMOUNT_FIELDS = ["annual_inc", "loan_amnt", "installment", "revol_bal", "tot_cur_bal",
@@ -40,13 +41,14 @@ class AmountTreater(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        d = X.copy()
+        new = {}
         for f, (lo, hi) in self.caps_.items():
-            d[f"{f}_capped"] = d[f].clip(lo, hi)
-            d[f"{f}_log"] = np.log1p(d[f"{f}_capped"])
+            capped = X[f].clip(lo, hi)
+            new[f"{f}_capped"] = capped
+            new[f"{f}_log"] = np.log1p(capped)
         for f in self.zero_fields_:
-            d[f"{f}_is_zero"] = d[f] == 0  # NaN == 0 is False: missing is not zero
-        return d
+            new[f"{f}_is_zero"] = X[f] == 0  # NaN == 0 is False: missing is not zero
+        return add_columns(X, new)
 
     def spec_entries(self):
         """Per-field rule for data_spec.json, so scoring applies the same limits."""
@@ -88,12 +90,10 @@ class RatioTreater(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        d = X.copy()
-        for f, (lo, hi) in self.caps_.items():
-            d[f"{f}_treated"] = d[f].clip(lo, hi).fillna(self.fill_[f])
+        new = {f"{f}_treated": X[f].clip(lo, hi).fillna(self.fill_[f]) for f, (lo, hi) in self.caps_.items()}
         for f in self.flag_fields_:
-            d[f"{f}_missing"] = d[f].isna()
-        return d
+            new[f"{f}_missing"] = X[f].isna()
+        return add_columns(X, new)
 
     def spec_entries(self):
         return {
@@ -119,10 +119,7 @@ class CountTreater(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        d = X.copy()
-        for f, hi in self.caps_.items():
-            d[f"{f}_capped"] = d[f].clip(upper=hi)
-        return d
+        return add_columns(X, {f"{f}_capped": X[f].clip(upper=hi) for f, hi in self.caps_.items()})
 
     def spec_entries(self):
         return {f: {"cap_high": hi, "cleaning": f"capped at p{self.upper_q * 100:g} = {hi:g}; zeros stay zero"}

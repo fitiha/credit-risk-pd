@@ -8,6 +8,7 @@ version when a feature is still heavily skewed after capping.
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
+from credit_risk.frames import add_columns
 from credit_risk.io import FIT_CUTOFF
 from credit_risk.outliers import RatioTreater
 
@@ -32,17 +33,17 @@ class FeatureBuilder(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        d = X.copy()
-        months = ((d["issue_d"].dt.year - d["earliest_cr_line"].dt.year) * 12
-                  + (d["issue_d"].dt.month - d["earliest_cr_line"].dt.month))
-        d["credit_history_months"] = months  # missing where the credit date was corrupted
-        d["loan_to_income"] = d["loan_amnt"] / d["annual_inc"]
-        d["installment_to_income"] = d["installment"] / (d["annual_inc"] / 12)
-        d["revol_bal_to_income"] = d["revol_bal"] / d["annual_inc"]
-        d["fico_mid"] = (d["fico_range_low"] + d["fico_range_high"]) / 2
-        d["open_acc_share"] = d["open_acc"] / d["total_acc"]
-        d["recent_accounts_share"] = d["acc_open_past_24mths"] / d["total_acc"]
-        return d
+        months = ((X["issue_d"].dt.year - X["earliest_cr_line"].dt.year) * 12
+                  + (X["issue_d"].dt.month - X["earliest_cr_line"].dt.month))
+        return add_columns(X, {
+            "credit_history_months": months,  # missing where the credit date was corrupted
+            "loan_to_income": X["loan_amnt"] / X["annual_inc"],
+            "installment_to_income": X["installment"] / (X["annual_inc"] / 12),
+            "revol_bal_to_income": X["revol_bal"] / X["annual_inc"],
+            "fico_mid": (X["fico_range_low"] + X["fico_range_high"]) / 2,
+            "open_acc_share": X["open_acc"] / X["total_acc"],
+            "recent_accounts_share": X["acc_open_past_24mths"] / X["total_acc"],
+        })
 
 
 class FeatureTreater(RatioTreater):
@@ -62,9 +63,7 @@ class FeatureTreater(RatioTreater):
 
     def transform(self, X):
         d = super().transform(X)
-        for f in self.log_fields_:
-            d[f"{f}_log"] = np.log1p(d[f"{f}_treated"])
-        return d
+        return add_columns(d, {f"{f}_log": np.log1p(d[f"{f}_treated"]) for f in self.log_fields_})
 
     def spec_entries(self):
         out = super().spec_entries()

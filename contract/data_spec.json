@@ -1,0 +1,3220 @@
+{
+  "contract_version": "1.0.0",
+  "fit_cutoff": "2014-12-31",
+  "label": {
+    "name": "defaulted",
+    "definition": "1 = charged off or defaulted, 0 = fully paid; loans still in progress were removed"
+  },
+  "notes": [
+    "Every fitted value (caps, medians, groups, bins, WoE, scaler, PCA, factor model) comes from loans issued up to fit_cutoff only.",
+    "WoE = ln(share of repaid loans / share of defaulted loans) in the group: positive means safer than average; unseen values get 0.",
+    "Valid ranges describe the cleaned value of a field and come from plausibility, not from the fit window.",
+    "issue_d is the application date when scoring; credit history length is measured from it.",
+    "Percent fields (revol_util, bc_util) must be in percent (91, not 0.91); a whole batch in fractions is rejected."
+  ],
+  "fields": [
+    {
+      "name": "issue_d",
+      "type": "date",
+      "min": "2007-01-01",
+      "max": "2035-12-31",
+      "nullable": false,
+      "cleaning": "parsed from Mon-YYYY, YYYY-MM-DD or MM/YYYY; when scoring it is the application date",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Platform-recorded; 1,200 loans (4%) in other date formats, all parsed. Used to split the data in time, not as a model input: the rise in default over issue date is partly an artifact of removed unfinished loans.",
+      "role": "time_key",
+      "known_at_application": true
+    },
+    {
+      "name": "loan_amnt",
+      "type": "float",
+      "min": 1000,
+      "max": 40000,
+      "nullable": false,
+      "cleaning": "if the payment implied by amount, rate and term is 10x the installment (within 0.5), the amount is divided by 10; capped at p0.5 = 1,200 and p99.5 = 35,000, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "high",
+      "reliability_reason": "Set by the platform. 300 loans (1%) had the amount 10x too large; found with the installment cross-check and repaired.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "term",
+      "type": "category",
+      "allowed": [
+        36,
+        60
+      ],
+      "nullable": false,
+      "cleaning": "months extracted from text (' 36 months' becomes 36)",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Set by the platform; two values (36, 60) after trimming spaces.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "int_rate",
+      "type": "float",
+      "min": 5,
+      "max": 31,
+      "nullable": false,
+      "cleaning": "exactly 6 is a placeholder, replaced by the median rate of the sub_grade",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Set by the platform from its own risk model. 8 loans carried a placeholder of exactly 6.00, replaced by the sub-grade median.",
+      "role": "platform_score",
+      "known_at_application": true
+    },
+    {
+      "name": "installment",
+      "type": "float",
+      "min": 15,
+      "max": 1500,
+      "nullable": false,
+      "cleaning": "none; used to detect a loan amount 10x too large; capped at p0.5 = 44 and p99.5 = 1,227, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "high",
+      "reliability_reason": "Platform-computed; matches the loan math except 4 loans; never above 40% of income.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "grade",
+      "type": "category",
+      "allowed": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Assigned by the platform's own risk model; consistent with sub_grade in every loan.",
+      "role": "platform_score",
+      "known_at_application": true
+    },
+    {
+      "name": "sub_grade",
+      "type": "category",
+      "allowed": [
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "G5"
+      ],
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Assigned by the platform's own risk model; interest rates rise with sub-grade.",
+      "role": "platform_score",
+      "known_at_application": true
+    },
+    {
+      "name": "purpose",
+      "type": "category",
+      "allowed": [
+        "car",
+        "credit_card",
+        "debt_consolidation",
+        "educational",
+        "home_improvement",
+        "house",
+        "major_purchase",
+        "medical",
+        "moving",
+        "other",
+        "renewable_energy",
+        "small_business",
+        "vacation",
+        "wedding"
+      ],
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "medium",
+      "reliability_reason": "Chosen by the borrower from 13 options; clean, but stated intent is not verified.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "title",
+      "type": "str",
+      "max_length": 200,
+      "nullable": true,
+      "cleaning": "none",
+      "missing_strategy": "not used",
+      "reliability": "low",
+      "reliability_reason": "Borrower-typed text; 1,821 distinct values that mostly restate purpose.",
+      "role": "excluded",
+      "known_at_application": true
+    },
+    {
+      "name": "application_type",
+      "type": "category",
+      "allowed": [
+        "Individual",
+        "Joint App"
+      ],
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Platform-recorded; only 16 joint applications, too few to learn from.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "emp_title",
+      "type": "str",
+      "max_length": 200,
+      "nullable": true,
+      "cleaning": "stripped and lower-cased; grouped into job groups (a restricted field)",
+      "missing_strategy": "missing is its own job group",
+      "reliability": "low",
+      "reliability_reason": "Borrower-typed text; 5.7% missing, concentrated among verified applicants (0.2% of unverified, 3.6% of source-verified, 12.4% of verified), not linked to default (18.8% vs 17.1%, p = 0.22). Case and spacing variants (15,657 values fall to 13,484). Until September 2013 the field mostly holds employer names, not job titles, so those loans have their own group. Grouped into job groups (the grouping is in the contract), but restricted: occupation can stand in for protected characteristics that the data does not contain, and its signal is weak (IV 0.015), so it is not a default model input pending the fairness review.",
+      "role": "restricted",
+      "known_at_application": true
+    },
+    {
+      "name": "emp_length",
+      "type": "category",
+      "allowed": [
+        "< 1 year",
+        "1 year",
+        "2 years",
+        "3 years",
+        "4 years",
+        "5 years",
+        "6 years",
+        "7 years",
+        "8 years",
+        "9 years",
+        "10+ years"
+      ],
+      "nullable": true,
+      "cleaning": "none",
+      "missing_strategy": "missing is its own level",
+      "reliability": "medium",
+      "reliability_reason": "Self-reported; 4.8% missing, tied to the verification process (0.0% of unverified, 2.4% of source-verified, 10.9% of verified), not clearly to default (19.5% vs 17.1%, p = 0.11). Length of employment tends to rise with age, so it is watched in the fairness review.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "home_ownership",
+      "type": "category",
+      "allowed": [
+        "MORTGAGE",
+        "OWN",
+        "RENT",
+        "OTHER",
+        "NONE",
+        "ANY"
+      ],
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "medium",
+      "reliability_reason": "Self-reported; clean categories.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "annual_inc",
+      "type": "float",
+      "min": 1000,
+      "max": 10000000,
+      "nullable": false,
+      "cleaning": "values below 1,000 treated as thousands (x1000); capped at p0.5 = 16,000 and p99.5 = 300,000, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "medium",
+      "reliability_reason": "Self-reported. 899 loans (3%) typed in thousands, repaired. Consistent with credit limits and debt ratios in every verification group (rank correlation 0.55 to 0.57 with total credit limit), so usable; verified incomes are higher (median $66-67k vs $58k).",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "verification_status",
+      "type": "category",
+      "allowed": [
+        "Not Verified",
+        "Source Verified",
+        "Verified"
+      ],
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Recorded by the platform. Do not read it as lower risk: verified loans default more (19% vs 13%), likely because the platform chooses whom to verify.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "dti",
+      "type": "float",
+      "min": 0,
+      "max": 150,
+      "nullable": false,
+      "cleaning": "capped at p0.5 = 1.5 and p99.5 = 36.9",
+      "missing_strategy": "median of the fit window (17.2)",
+      "reliability": "medium",
+      "reliability_reason": "Platform-computed from the stated income and bureau debts, so only as reliable as the income. Rises with revolving balance relative to income (correlation 0.36 to 0.43), as it should.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "zip_code",
+      "type": "str",
+      "pattern": "^\\d{3}xx$",
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "medium",
+      "reliability_reason": "First three digits only; disagrees with the state in 33 loans. Location can proxy for protected characteristics; treatment decided in the fairness review.",
+      "role": "restricted",
+      "known_at_application": true
+    },
+    {
+      "name": "addr_state",
+      "type": "category",
+      "allowed": [
+        "AL",
+        "AK",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "DC",
+        "FL",
+        "GA",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY"
+      ],
+      "nullable": false,
+      "cleaning": "stripped and upper-cased, full state names mapped to codes",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "medium",
+      "reliability_reason": "Self-reported; 3,000 loans (10%) with formatting variants, all repaired. Treatment decided in the fairness review.",
+      "role": "restricted",
+      "known_at_application": true
+    },
+    {
+      "name": "earliest_cr_line",
+      "type": "date",
+      "min": "1930-01-01",
+      "max": "2035-12-31",
+      "nullable": true,
+      "cleaning": "parsed from the same three formats; later than issue_d: set to missing, indicator added",
+      "missing_strategy": "corrupted dates become missing; credit history length is filled with the fit-window median",
+      "reliability": "medium",
+      "reliability_reason": "Bureau-reported. 300 loans (1%) have a date after the loan, corrupted beyond repair (133 in the fit window): set missing with an indicator; not linked to default (15.0% vs 17.3%, p = 0.57). 1,200 in other formats, parsed.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "fico_range_low",
+      "type": "float",
+      "min": 300,
+      "max": 850,
+      "nullable": false,
+      "cleaning": "low and high swapped when low > high",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau score. 150 loans (0.5%) had low and high swapped; repaired.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "fico_range_high",
+      "type": "float",
+      "min": 300,
+      "max": 850,
+      "nullable": false,
+      "cleaning": "low and high swapped when low > high",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau score. Swapped with the low value in 150 loans; repaired.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "inq_last_6mths",
+      "type": "int",
+      "min": 0,
+      "max": 40,
+      "nullable": false,
+      "cleaning": "capped at p99.5 = 5; zeros stay zero",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "delinq_2yrs",
+      "type": "int",
+      "min": 0,
+      "max": 60,
+      "nullable": false,
+      "cleaning": "capped at p99.5 = 5; zeros stay zero",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found; mostly zero, long tail capped.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "mths_since_last_delinq",
+      "type": "float",
+      "min": 0,
+      "max": 1000,
+      "nullable": true,
+      "cleaning": "none",
+      "missing_strategy": "missing means no delinquency on record; kept as its own bin in WoE",
+      "reliability": "medium",
+      "reliability_reason": "Missing in 46% of loans, and structurally: 99.7% of the missing have no delinquency in the last two years, so missing means none on record. Not linked to default (16.7% vs 17.7%, p = 0.09). A few contradictions: missing although a delinquency was recorded in the last two years (18 loans in the fit window, 67 overall).",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "pub_rec",
+      "type": "int",
+      "min": 0,
+      "max": 100,
+      "nullable": false,
+      "cleaning": "capped at p99.5 = 3; zeros stay zero",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "pub_rec_bankruptcies",
+      "type": "int",
+      "min": 0,
+      "max": 50,
+      "nullable": false,
+      "cleaning": "capped at p99.5 = 2; zeros stay zero",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "open_acc",
+      "type": "int",
+      "min": 0,
+      "max": 150,
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; never above total_acc.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "total_acc",
+      "type": "int",
+      "min": 0,
+      "max": 300,
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found; never below open_acc.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "revol_bal",
+      "type": "float",
+      "min": 0,
+      "max": 5000000,
+      "nullable": false,
+      "cleaning": "if balance / limit is 8 to 20 times the reported utilisation, or the balance exceeds 1.5x the total current balance and a tenth of it fits, the balance is divided by 10; capped at p0.5 = 163 and p99.5 = 126,556, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "high",
+      "reliability_reason": "Bureau amount. 308 loans (1%) had the balance 10x too large, found by checking balance / limit against the reported utilisation and against the total balance, and repaired; the remaining heavy tail passes those checks and is capped; a few real zeros.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "revol_util",
+      "type": "float",
+      "min": 0,
+      "max": 500,
+      "nullable": true,
+      "cleaning": "negative values: sign removed; capped at p0.5 = 0.9 and p99.5 = 99.2",
+      "missing_strategy": "median of the fit window (57.0)",
+      "reliability": "medium",
+      "reliability_reason": "295 negative values (1%) were sign flips, proven against balance and limit; 12 missing (5 with no revolving limit, so undefined). The 2016 holdout stores it as a fraction (0.91) in every row; it is converted to percent on loading and batches in the wrong unit are rejected.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "bc_util",
+      "type": "float",
+      "min": 0,
+      "max": 500,
+      "nullable": true,
+      "cleaning": "negative values: set to missing, indicator added; capped at p0.5 = 0.0 and p99.5 = 102.9",
+      "missing_strategy": "median of the fit window (69.3) plus a missing indicator",
+      "reliability": "medium",
+      "reliability_reason": "290 negative values (1%) set to missing because the sign flip cannot be proven; 1% more missing in the bureau file, mostly for borrowers with few open accounts (8.6% missing at 3 or fewer open accounts vs 0.4% above 10), with a weak, unproven link to higher default (21.2% vs 17.2%, p = 0.19).",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "tot_cur_bal",
+      "type": "float",
+      "min": 0,
+      "max": 20000000,
+      "nullable": false,
+      "cleaning": "capped at p0.5 = 2,230 and p99.5 = 755,791, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "high",
+      "reliability_reason": "Bureau amount; no errors found; heavy tail capped.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "avg_cur_bal",
+      "type": "float",
+      "min": 0,
+      "max": 5000000,
+      "nullable": false,
+      "cleaning": "capped at p0.5 = 352 and p99.5 = 85,142, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "high",
+      "reliability_reason": "Bureau amount; no errors found; heavy tail capped.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "total_rev_hi_lim",
+      "type": "float",
+      "min": 0,
+      "max": 5000000,
+      "nullable": false,
+      "cleaning": "capped at p0.5 = 2,300 and p99.5 = 184,670, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "high",
+      "reliability_reason": "Bureau amount; no errors found; heavy tail capped.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "tot_hi_cred_lim",
+      "type": "float",
+      "min": 0,
+      "max": 20000000,
+      "nullable": false,
+      "cleaning": "capped at p0.5 = 5,900 and p99.5 = 869,472, then log(1 + x)",
+      "missing_strategy": "left missing (none in the fit window)",
+      "reliability": "high",
+      "reliability_reason": "Bureau amount; no errors found; heavy tail capped.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "mort_acc",
+      "type": "int",
+      "min": 0,
+      "max": 100,
+      "nullable": false,
+      "cleaning": "capped at p99.5 = 10; zeros stay zero",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "acc_open_past_24mths",
+      "type": "int",
+      "min": 0,
+      "max": 100,
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found.",
+      "role": "input",
+      "known_at_application": true
+    },
+    {
+      "name": "num_tl_op_past_12m",
+      "type": "int",
+      "min": 0,
+      "max": 100,
+      "nullable": false,
+      "cleaning": "none",
+      "missing_strategy": "not allowed: a missing value is rejected",
+      "reliability": "high",
+      "reliability_reason": "Bureau count; no errors found.",
+      "role": "input",
+      "known_at_application": true
+    }
+  ],
+  "treated_fields": {
+    "money": {
+      "annual_inc": {
+        "cap_low": 16000.0,
+        "cap_high": 300000.0,
+        "log1p": true,
+        "zero_indicator": false,
+        "cleaning": "capped at p0.5 = 16,000 and p99.5 = 300,000, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      },
+      "loan_amnt": {
+        "cap_low": 1200.0,
+        "cap_high": 35000.0,
+        "log1p": true,
+        "zero_indicator": false,
+        "cleaning": "capped at p0.5 = 1,200 and p99.5 = 35,000, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      },
+      "installment": {
+        "cap_low": 44.187400000000004,
+        "cap_high": 1227.2431999999992,
+        "log1p": true,
+        "zero_indicator": false,
+        "cleaning": "capped at p0.5 = 44 and p99.5 = 1,227, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      },
+      "revol_bal": {
+        "cap_low": 162.57999999999998,
+        "cap_high": 126556.3999999999,
+        "log1p": true,
+        "zero_indicator": true,
+        "cleaning": "capped at p0.5 = 163 and p99.5 = 126,556, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      },
+      "tot_cur_bal": {
+        "cap_low": 2229.8,
+        "cap_high": 755791.2399999986,
+        "log1p": true,
+        "zero_indicator": true,
+        "cleaning": "capped at p0.5 = 2,230 and p99.5 = 755,791, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      },
+      "avg_cur_bal": {
+        "cap_low": 351.86,
+        "cap_high": 85141.51999999987,
+        "log1p": true,
+        "zero_indicator": true,
+        "cleaning": "capped at p0.5 = 352 and p99.5 = 85,142, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      },
+      "total_rev_hi_lim": {
+        "cap_low": 2300.0,
+        "cap_high": 184669.9999999997,
+        "log1p": true,
+        "zero_indicator": true,
+        "cleaning": "capped at p0.5 = 2,300 and p99.5 = 184,670, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      },
+      "tot_hi_cred_lim": {
+        "cap_low": 5900.0,
+        "cap_high": 869472.4799999993,
+        "log1p": true,
+        "zero_indicator": false,
+        "cleaning": "capped at p0.5 = 5,900 and p99.5 = 869,472, then log(1 + x)",
+        "missing_strategy": "left missing (none in the fit window)"
+      }
+    },
+    "ratios": {
+      "dti": {
+        "cap_low": 1.4586,
+        "cap_high": 36.93419999999998,
+        "fill_value": 17.23,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 1.5 and p99.5 = 36.9",
+        "missing_strategy": "median of the fit window (17.2)"
+      },
+      "revol_util": {
+        "cap_low": 0.9,
+        "cap_high": 99.2,
+        "fill_value": 57.0,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 0.9 and p99.5 = 99.2",
+        "missing_strategy": "median of the fit window (57.0)"
+      },
+      "bc_util": {
+        "cap_low": 0.0,
+        "cap_high": 102.9,
+        "fill_value": 69.3,
+        "missing_indicator": true,
+        "cleaning": "capped at p0.5 = 0.0 and p99.5 = 102.9",
+        "missing_strategy": "median of the fit window (69.3) plus a missing indicator"
+      }
+    },
+    "counts": {
+      "delinq_2yrs": {
+        "cap_high": 5.0,
+        "cleaning": "capped at p99.5 = 5; zeros stay zero"
+      },
+      "pub_rec": {
+        "cap_high": 3.0,
+        "cleaning": "capped at p99.5 = 3; zeros stay zero"
+      },
+      "pub_rec_bankruptcies": {
+        "cap_high": 2.0,
+        "cleaning": "capped at p99.5 = 2; zeros stay zero"
+      },
+      "inq_last_6mths": {
+        "cap_high": 5.0,
+        "cleaning": "capped at p99.5 = 5; zeros stay zero"
+      },
+      "mort_acc": {
+        "cap_high": 10.0,
+        "cleaning": "capped at p99.5 = 10; zeros stay zero"
+      }
+    },
+    "features": {
+      "credit_history_months": {
+        "cap_low": 44.0,
+        "cap_high": 510.8050000000003,
+        "fill_value": 179.0,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 44.0 and p99.5 = 510.8",
+        "missing_strategy": "median of the fit window (179.0)",
+        "definition": "months from the first credit line to the loan issue date",
+        "log1p": false
+      },
+      "loan_to_income": {
+        "cap_low": 0.02211460231646967,
+        "cap_high": 0.46609333333333297,
+        "fill_value": 0.20833333333333334,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 0.0 and p99.5 = 0.5",
+        "missing_strategy": "median of the fit window (0.2)",
+        "definition": "loan amount divided by annual income",
+        "log1p": false
+      },
+      "installment_to_income": {
+        "cap_low": 0.008979372,
+        "cap_high": 0.18774666666666665,
+        "fill_value": 0.0765104,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 0.0 and p99.5 = 0.2",
+        "missing_strategy": "median of the fit window (0.1)",
+        "definition": "monthly installment divided by monthly income",
+        "log1p": false
+      },
+      "revol_bal_to_income": {
+        "cap_low": 0.001990329719963866,
+        "cap_high": 1.1218912288288279,
+        "fill_value": 0.19539285714285715,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 0.0 and p99.5 = 1.1",
+        "missing_strategy": "median of the fit window (0.2)",
+        "definition": "revolving balance divided by annual income",
+        "log1p": false
+      },
+      "fico_mid": {
+        "cap_low": 662.0,
+        "cap_high": 812.0,
+        "fill_value": 687.0,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 662.0 and p99.5 = 812.0",
+        "missing_strategy": "median of the fit window (687.0)",
+        "definition": "midpoint of the FICO range",
+        "log1p": false
+      },
+      "open_acc_share": {
+        "cap_low": 0.15384615384615385,
+        "cap_high": 1.0,
+        "fill_value": 0.4666666666666667,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 0.2 and p99.5 = 1.0",
+        "missing_strategy": "median of the fit window (0.5)",
+        "definition": "open accounts divided by total accounts",
+        "log1p": false
+      },
+      "recent_accounts_share": {
+        "cap_low": 0.0,
+        "cap_high": 0.7058823529411765,
+        "fill_value": 0.16,
+        "missing_indicator": false,
+        "cleaning": "capped at p0.5 = 0.0 and p99.5 = 0.7",
+        "missing_strategy": "median of the fit window (0.2)",
+        "definition": "accounts opened in the past 24 months divided by total accounts",
+        "log1p": false
+      }
+    }
+  },
+  "category_groupings": {
+    "grouping": {
+      "purpose": {
+        "min_share": 0.01,
+        "min_loans_in_fit_window": 144,
+        "kept_levels": [
+          "credit_card",
+          "debt_consolidation",
+          "home_improvement",
+          "major_purchase",
+          "other"
+        ],
+        "merged_levels": [
+          "car",
+          "house",
+          "medical",
+          "moving",
+          "renewable_energy",
+          "small_business",
+          "vacation",
+          "wedding"
+        ],
+        "other_label": "other_purpose"
+      },
+      "home_ownership": {
+        "min_share": 0.01,
+        "min_loans_in_fit_window": 144,
+        "kept_levels": [
+          "MORTGAGE",
+          "OWN",
+          "RENT"
+        ],
+        "merged_levels": [],
+        "other_label": "other_home_ownership"
+      },
+      "addr_state": {
+        "min_share": 0.01,
+        "min_loans_in_fit_window": 144,
+        "kept_levels": [
+          "AL",
+          "AZ",
+          "CA",
+          "CO",
+          "CT",
+          "FL",
+          "GA",
+          "IL",
+          "IN",
+          "KS",
+          "KY",
+          "LA",
+          "MA",
+          "MD",
+          "MI",
+          "MN",
+          "MO",
+          "NC",
+          "NJ",
+          "NV",
+          "NY",
+          "OH",
+          "OK",
+          "OR",
+          "PA",
+          "SC",
+          "TN",
+          "TX",
+          "VA",
+          "WA",
+          "WI"
+        ],
+        "merged_levels": [
+          "AK",
+          "AR",
+          "DC",
+          "DE",
+          "HI",
+          "MS",
+          "MT",
+          "NE",
+          "NH",
+          "NM",
+          "RI",
+          "SD",
+          "UT",
+          "VT",
+          "WV",
+          "WY"
+        ],
+        "other_label": "other_addr_state"
+      },
+      "application_type": {
+        "min_share": 0.01,
+        "min_loans_in_fit_window": 144,
+        "kept_levels": [
+          "Individual"
+        ],
+        "merged_levels": [],
+        "other_label": "other_application_type"
+      }
+    },
+    "job_groups": {
+      "rules_in_priority_order": {
+        "executive_owner": "owner|president|ceo|cfo|coo|cto|chief|vice president|\\bvp\\b|partner|founder|proprietor",
+        "healthcare": "nurse|nursing|\\brn\\b|\\blpn\\b|\\bcna\\b|medical|health|hospital|physician|doctor|dental|dentist|pharmac|therapist|clinic|\\bcare\\b|paramedic|\\bemt\\b|surgeon|caregiver|social worker",
+        "education": "teacher|teaching|professor|school|instructor|university|college|educat|counselor|principal",
+        "public_safety_government": "police|sheriff|deputy|correction|fire ?fighter|trooper|detective|military|army|navy|air force|marine|usps|postal|government|federal|county|city of|security|department|\\bdept\\b|sergeant|carrier|investigator",
+        "professional_technical": "engineer|analyst|accountant|attorney|lawyer|developer|programmer|software|\\bit\\b|consultant|scientist|architect|designer|auditor|controller|actuary|economist|researcher|accounting|bookkeeper|underwrit|paralegal|planner|adjuster",
+        "trades_transport_labor": "driver|truck|operator|technician|\\btech\\b|mechanic|maintenance|machinist|welder|electrician|plumber|warehouse|production|construction|installer|laborer|delivery|pilot|carpenter|assembler|\\bcook\\b|\\bchef\\b|janitor|custodian|manufactur|forklift|handler|loader",
+        "manager_supervisor": "manager|\\bmgr\\b|manage|director|supervisor|\\blead\\b|foreman|superintendent|\\bhead\\b|coordinator|administrator",
+        "sales_service_office": "sales|representative|\\brep\\b|agent|clerk|customer|service|assistant|secretary|receptionist|teller|cashier|associate|support|advisor|broker|\\badmin|office|banker|\\bbank\\b|specialist|server|clerical|retail|bartender|attendant"
+      },
+      "employer_name_era": "loans issued before 2013-10-01 (the field held employer names)",
+      "other": "other_job",
+      "missing": "missing"
+    },
+    "emp_length_order": [
+      "< 1 year",
+      "1 year",
+      "2 years",
+      "3 years",
+      "4 years",
+      "5 years",
+      "6 years",
+      "7 years",
+      "8 years",
+      "9 years",
+      "10+ years"
+    ]
+  },
+  "cleaning_rules": {
+    "annual_inc": "values below 1,000 treated as thousands (x1000)",
+    "loan_amnt": "if the payment implied by amount, rate and term is 10x the installment (within 0.5), the amount is divided by 10",
+    "int_rate": "exactly 6 is a placeholder, replaced by the median rate of the sub_grade",
+    "revol_bal": "if balance / limit is 8 to 20 times the reported utilisation, or the balance exceeds 1.5x the total current balance and a tenth of it fits, the balance is divided by 10",
+    "revol_util": "negative values: sign removed",
+    "bc_util": "negative values: set to missing, indicator added",
+    "fico_range": "low and high swapped when low > high",
+    "earliest_cr_line": "later than issue_d: set to missing, indicator added",
+    "median_int_rate_by_sub_grade": {
+      "A1": 6.03,
+      "A2": 6.49,
+      "A3": 7.62,
+      "A4": 7.9,
+      "A5": 8.9,
+      "B1": 9.67,
+      "B2": 10.99,
+      "B3": 11.99,
+      "B4": 12.49,
+      "B5": 12.99,
+      "C1": 13.65,
+      "C2": 14.16,
+      "C3": 14.64,
+      "C4": 15.31,
+      "C5": 15.61,
+      "D1": 16.59,
+      "D2": 17.57,
+      "D3": 18.25,
+      "D4": 18.92,
+      "D5": 18.24,
+      "E1": 19.99,
+      "E2": 20.49,
+      "E3": 21.18,
+      "E4": 21.98,
+      "E5": 22.45,
+      "F1": 23.43,
+      "F2": 24.08,
+      "F3": 24.5,
+      "F4": 24.99,
+      "F5": 25.57,
+      "G1": 25.8,
+      "G2": 25.83,
+      "G3": 25.89,
+      "G4": 25.99,
+      "G5": 26.06
+    }
+  },
+  "woe": {
+    "annual_inc_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        10.645448706505872,
+        10.819798284210286,
+        11.127277689932466,
+        11.314486721293981,
+        11.407576060361786,
+        11.48247656671073,
+        11.580593459194764
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 2757,
+          "default_rate": 0.214,
+          "woe": -0.267
+        },
+        {
+          "label": "bin_01",
+          "loans": 1460,
+          "default_rate": 0.1932,
+          "woe": -0.1391
+        },
+        {
+          "label": "bin_02",
+          "loans": 3625,
+          "default_rate": 0.176,
+          "woe": -0.0243
+        },
+        {
+          "label": "bin_03",
+          "loans": 2161,
+          "default_rate": 0.1652,
+          "woe": 0.0515
+        },
+        {
+          "label": "bin_04",
+          "loans": 728,
+          "default_rate": 0.1566,
+          "woe": 0.1128
+        },
+        {
+          "label": "bin_05",
+          "loans": 749,
+          "default_rate": 0.1509,
+          "woe": 0.1568
+        },
+        {
+          "label": "bin_06",
+          "loans": 728,
+          "default_rate": 0.1429,
+          "woe": 0.2204
+        },
+        {
+          "label": "bin_07",
+          "loans": 2165,
+          "default_rate": 0.1293,
+          "woe": 0.338
+        }
+      ],
+      "iv": 0.037,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "loan_amnt_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        8.699681400989514,
+        9.210440366976517,
+        9.692828247710418,
+        9.952325334619427,
+        10.344993314584732
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1887,
+          "default_rate": 0.133,
+          "woe": 0.3052
+        },
+        {
+          "label": "bin_01",
+          "loans": 2635,
+          "default_rate": 0.159,
+          "woe": 0.0969
+        },
+        {
+          "label": "bin_02",
+          "loans": 4814,
+          "default_rate": 0.1749,
+          "woe": -0.0169
+        },
+        {
+          "label": "bin_03",
+          "loans": 2013,
+          "default_rate": 0.1843,
+          "woe": -0.0813
+        },
+        {
+          "label": "bin_04",
+          "loans": 2305,
+          "default_rate": 0.1905,
+          "woe": -0.1215
+        },
+        {
+          "label": "bin_05",
+          "loans": 719,
+          "default_rate": 0.217,
+          "woe": -0.2866
+        }
+      ],
+      "iv": 0.0207,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "installment_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        5.144280009278212,
+        5.596939379038152,
+        6.542774508394519
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1438,
+          "default_rate": 0.1238,
+          "woe": 0.3866
+        },
+        {
+          "label": "bin_01",
+          "loans": 2155,
+          "default_rate": 0.1606,
+          "woe": 0.0849
+        },
+        {
+          "label": "bin_02",
+          "loans": 8619,
+          "default_rate": 0.1791,
+          "woe": -0.0461
+        },
+        {
+          "label": "bin_03",
+          "loans": 2161,
+          "default_rate": 0.1897,
+          "woe": -0.1172
+        }
+      ],
+      "iv": 0.0176,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "revol_bal_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        8.78462153484075,
+        9.92299601892417,
+        10.054989011768615,
+        10.205494038505448,
+        10.622818715777655
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 3593,
+          "default_rate": 0.1784,
+          "woe": -0.0411
+        },
+        {
+          "label": "bin_01",
+          "loans": 7186,
+          "default_rate": 0.1751,
+          "woe": -0.0179
+        },
+        {
+          "label": "bin_02",
+          "loans": 719,
+          "default_rate": 0.1655,
+          "woe": 0.0467
+        },
+        {
+          "label": "bin_03",
+          "loans": 719,
+          "default_rate": 0.1655,
+          "woe": 0.0467
+        },
+        {
+          "label": "bin_04",
+          "loans": 1437,
+          "default_rate": 0.1621,
+          "woe": 0.0729
+        },
+        {
+          "label": "bin_05",
+          "loans": 719,
+          "default_rate": 0.1502,
+          "woe": 0.1615
+        }
+      ],
+      "iv": 0.0026,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "tot_cur_bal_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        11.04307221655386,
+        11.56995205507676,
+        11.801068430830002,
+        12.256989118929612,
+        12.94515257028222
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 6468,
+          "default_rate": 0.1959,
+          "woe": -0.1558
+        },
+        {
+          "label": "bin_01",
+          "loans": 1437,
+          "default_rate": 0.1837,
+          "woe": -0.0778
+        },
+        {
+          "label": "bin_02",
+          "loans": 719,
+          "default_rate": 0.1766,
+          "woe": -0.0315
+        },
+        {
+          "label": "bin_03",
+          "loans": 2155,
+          "default_rate": 0.1578,
+          "woe": 0.106
+        },
+        {
+          "label": "bin_04",
+          "loans": 2875,
+          "default_rate": 0.1357,
+          "woe": 0.2831
+        },
+        {
+          "label": "bin_05",
+          "loans": 719,
+          "default_rate": 0.1252,
+          "woe": 0.3719
+        }
+      ],
+      "iv": 0.0345,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "avg_cur_bal_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        8.345455428161928,
+        9.150611593358327,
+        9.850350454123,
+        10.366164401321084
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 5029,
+          "default_rate": 0.1992,
+          "woe": -0.1772
+        },
+        {
+          "label": "bin_01",
+          "loans": 2876,
+          "default_rate": 0.1892,
+          "woe": -0.113
+        },
+        {
+          "label": "bin_02",
+          "loans": 2874,
+          "default_rate": 0.1656,
+          "woe": 0.0483
+        },
+        {
+          "label": "bin_03",
+          "loans": 2156,
+          "default_rate": 0.1415,
+          "woe": 0.2339
+        },
+        {
+          "label": "bin_04",
+          "loans": 1438,
+          "default_rate": 0.105,
+          "woe": 0.572
+        }
+      ],
+      "iv": 0.0493,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "total_rev_hi_lim_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        9.012011377036412,
+        9.83097062169695,
+        10.431199791458543,
+        10.803669227477098,
+        11.266269969576042
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1428,
+          "default_rate": 0.2136,
+          "woe": -0.2655
+        },
+        {
+          "label": "bin_01",
+          "loans": 4289,
+          "default_rate": 0.1819,
+          "woe": -0.0644
+        },
+        {
+          "label": "bin_02",
+          "loans": 4343,
+          "default_rate": 0.1782,
+          "woe": -0.0397
+        },
+        {
+          "label": "bin_03",
+          "loans": 2156,
+          "default_rate": 0.1605,
+          "woe": 0.0858
+        },
+        {
+          "label": "bin_04",
+          "loans": 1438,
+          "default_rate": 0.1328,
+          "woe": 0.3063
+        },
+        {
+          "label": "bin_05",
+          "loans": 719,
+          "default_rate": 0.114,
+          "woe": 0.477
+        }
+      ],
+      "iv": 0.0286,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "tot_hi_cred_lim_log": {
+      "method": "monotonic_merge",
+      "edges": [
+        10.746691329302752,
+        10.894896888519245,
+        11.047780407835361,
+        11.818580550714321,
+        12.152851177398318,
+        12.41260295803724,
+        12.554176965035202,
+        13.076107036219952
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 3593,
+          "default_rate": 0.2015,
+          "woe": -0.1908
+        },
+        {
+          "label": "bin_01",
+          "loans": 719,
+          "default_rate": 0.1961,
+          "woe": -0.1591
+        },
+        {
+          "label": "bin_02",
+          "loans": 719,
+          "default_rate": 0.1961,
+          "woe": -0.1591
+        },
+        {
+          "label": "bin_03",
+          "loans": 2874,
+          "default_rate": 0.1851,
+          "woe": -0.0858
+        },
+        {
+          "label": "bin_04",
+          "loans": 1437,
+          "default_rate": 0.1705,
+          "woe": 0.0133
+        },
+        {
+          "label": "bin_05",
+          "loans": 1437,
+          "default_rate": 0.1601,
+          "woe": 0.0888
+        },
+        {
+          "label": "bin_06",
+          "loans": 719,
+          "default_rate": 0.1377,
+          "woe": 0.2631
+        },
+        {
+          "label": "bin_07",
+          "loans": 2156,
+          "default_rate": 0.1303,
+          "woe": 0.3293
+        },
+        {
+          "label": "bin_08",
+          "loans": 719,
+          "default_rate": 0.1182,
+          "woe": 0.4371
+        }
+      ],
+      "iv": 0.0406,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "dti_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        9.04,
+        12.84,
+        17.23,
+        18.37,
+        22.0,
+        26.54
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 2154,
+          "default_rate": 0.1184,
+          "woe": 0.4386
+        },
+        {
+          "label": "bin_01",
+          "loans": 2154,
+          "default_rate": 0.1411,
+          "woe": 0.237
+        },
+        {
+          "label": "bin_02",
+          "loans": 2873,
+          "default_rate": 0.1559,
+          "woe": 0.1203
+        },
+        {
+          "label": "bin_03",
+          "loans": 721,
+          "default_rate": 0.1692,
+          "woe": 0.0204
+        },
+        {
+          "label": "bin_04",
+          "loans": 2152,
+          "default_rate": 0.1905,
+          "woe": -0.1218
+        },
+        {
+          "label": "bin_05",
+          "loans": 2162,
+          "default_rate": 0.2044,
+          "woe": -0.2096
+        },
+        {
+          "label": "bin_06",
+          "loans": 2157,
+          "default_rate": 0.2304,
+          "woe": -0.3623
+        }
+      ],
+      "iv": 0.0669,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "revol_util_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        16.360000000000003,
+        30.880000000000017,
+        43.8,
+        50.7,
+        63.4,
+        66.7800000000001,
+        77.9,
+        92.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 719,
+          "default_rate": 0.114,
+          "woe": 0.4775
+        },
+        {
+          "label": "bin_01",
+          "loans": 1437,
+          "default_rate": 0.1392,
+          "woe": 0.2528
+        },
+        {
+          "label": "bin_02",
+          "loans": 2137,
+          "default_rate": 0.1572,
+          "woe": 0.1105
+        },
+        {
+          "label": "bin_03",
+          "loans": 1451,
+          "default_rate": 0.1606,
+          "woe": 0.085
+        },
+        {
+          "label": "bin_04",
+          "loans": 2868,
+          "default_rate": 0.1712,
+          "woe": 0.0091
+        },
+        {
+          "label": "bin_05",
+          "loans": 730,
+          "default_rate": 0.1877,
+          "woe": -0.1048
+        },
+        {
+          "label": "bin_06",
+          "loans": 2154,
+          "default_rate": 0.1973,
+          "woe": -0.1649
+        },
+        {
+          "label": "bin_07",
+          "loans": 2151,
+          "default_rate": 0.1976,
+          "woe": -0.1666
+        },
+        {
+          "label": "bin_08",
+          "loans": 726,
+          "default_rate": 0.2052,
+          "woe": -0.2158
+        }
+      ],
+      "iv": 0.0298,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "bc_util_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        34.8,
+        66.0,
+        72.6,
+        80.4,
+        96.2,
+        98.4
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 2148,
+          "default_rate": 0.1336,
+          "woe": 0.3004
+        },
+        {
+          "label": "bin_01",
+          "loans": 4296,
+          "default_rate": 0.1466,
+          "woe": 0.1929
+        },
+        {
+          "label": "bin_02",
+          "loans": 1450,
+          "default_rate": 0.1841,
+          "woe": -0.0804
+        },
+        {
+          "label": "bin_03",
+          "loans": 1430,
+          "default_rate": 0.1888,
+          "woe": -0.1112
+        },
+        {
+          "label": "bin_04",
+          "loans": 3590,
+          "default_rate": 0.1897,
+          "woe": -0.1161
+        },
+        {
+          "label": "bin_05",
+          "loans": 726,
+          "default_rate": 0.2231,
+          "woe": -0.3223
+        },
+        {
+          "label": "bin_06",
+          "loans": 733,
+          "default_rate": 0.2469,
+          "woe": -0.4544
+        }
+      ],
+      "iv": 0.046,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "delinq_2yrs_capped": {
+      "method": "monotonic_merge",
+      "edges": [
+        1.0,
+        2.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 11566,
+          "default_rate": 0.1693,
+          "woe": 0.0223
+        },
+        {
+          "label": "bin_01",
+          "loans": 1895,
+          "default_rate": 0.1805,
+          "woe": -0.0562
+        },
+        {
+          "label": "bin_02",
+          "loans": 912,
+          "default_rate": 0.1952,
+          "woe": -0.1536
+        }
+      ],
+      "iv": 0.0024,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "pub_rec_capped": {
+      "method": "monotonic_merge",
+      "edges": [
+        1.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 12101,
+          "default_rate": 0.1711,
+          "woe": 0.009
+        },
+        {
+          "label": "bin_01",
+          "loans": 2272,
+          "default_rate": 0.1791,
+          "woe": -0.0471
+        }
+      ],
+      "iv": 0.0004,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "pub_rec_bankruptcies_capped": {
+      "method": "monotonic_merge",
+      "edges": [
+        1.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 12597,
+          "default_rate": 0.172,
+          "woe": 0.0028
+        },
+        {
+          "label": "bin_01",
+          "loans": 1776,
+          "default_rate": 0.1751,
+          "woe": -0.0198
+        }
+      ],
+      "iv": 0.0001,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "inq_last_6mths_capped": {
+      "method": "monotonic_merge",
+      "edges": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 7582,
+          "default_rate": 0.1494,
+          "woe": 0.1707
+        },
+        {
+          "label": "bin_01",
+          "loans": 4013,
+          "default_rate": 0.1906,
+          "woe": -0.1226
+        },
+        {
+          "label": "bin_02",
+          "loans": 1739,
+          "default_rate": 0.203,
+          "woe": -0.2014
+        },
+        {
+          "label": "bin_03",
+          "loans": 1039,
+          "default_rate": 0.2185,
+          "woe": -0.2951
+        }
+      ],
+      "iv": 0.031,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "mort_acc_capped": {
+      "method": "monotonic_merge",
+      "edges": [],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 14373,
+          "default_rate": 0.1724,
+          "woe": 0.0
+        }
+      ],
+      "iv": 0.0,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "open_acc": {
+      "method": "monotonic_merge",
+      "edges": [
+        6.0,
+        7.0,
+        8.0,
+        16.0,
+        18.0,
+        21.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1086,
+          "default_rate": 0.1317,
+          "woe": 0.3157
+        },
+        {
+          "label": "bin_01",
+          "loans": 853,
+          "default_rate": 0.1571,
+          "woe": 0.1094
+        },
+        {
+          "label": "bin_02",
+          "loans": 1099,
+          "default_rate": 0.1611,
+          "woe": 0.0806
+        },
+        {
+          "label": "bin_03",
+          "loans": 8708,
+          "default_rate": 0.1754,
+          "woe": -0.0197
+        },
+        {
+          "label": "bin_04",
+          "loans": 979,
+          "default_rate": 0.1828,
+          "woe": -0.0725
+        },
+        {
+          "label": "bin_05",
+          "loans": 835,
+          "default_rate": 0.1844,
+          "woe": -0.0834
+        },
+        {
+          "label": "bin_06",
+          "loans": 813,
+          "default_rate": 0.2017,
+          "woe": -0.1943
+        }
+      ],
+      "iv": 0.0112,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "total_acc": {
+      "method": "monotonic_merge",
+      "edges": [
+        14.0,
+        30.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1930,
+          "default_rate": 0.185,
+          "woe": -0.0863
+        },
+        {
+          "label": "bin_01",
+          "loans": 7764,
+          "default_rate": 0.1712,
+          "woe": 0.0088
+        },
+        {
+          "label": "bin_02",
+          "loans": 4679,
+          "default_rate": 0.1693,
+          "woe": 0.0221
+        }
+      ],
+      "iv": 0.0012,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "acc_open_past_24mths": {
+      "method": "monotonic_merge",
+      "edges": [
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        9.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 2131,
+          "default_rate": 0.1154,
+          "woe": 0.4672
+        },
+        {
+          "label": "bin_01",
+          "loans": 2139,
+          "default_rate": 0.1388,
+          "woe": 0.2561
+        },
+        {
+          "label": "bin_02",
+          "loans": 2231,
+          "default_rate": 0.1564,
+          "woe": 0.1165
+        },
+        {
+          "label": "bin_03",
+          "loans": 2082,
+          "default_rate": 0.1686,
+          "woe": 0.0271
+        },
+        {
+          "label": "bin_04",
+          "loans": 1737,
+          "default_rate": 0.1842,
+          "woe": -0.0806
+        },
+        {
+          "label": "bin_05",
+          "loans": 1347,
+          "default_rate": 0.1997,
+          "woe": -0.1806
+        },
+        {
+          "label": "bin_06",
+          "loans": 1571,
+          "default_rate": 0.2209,
+          "woe": -0.3079
+        },
+        {
+          "label": "bin_07",
+          "loans": 1135,
+          "default_rate": 0.2634,
+          "woe": -0.5403
+        }
+      ],
+      "iv": 0.0814,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "num_tl_op_past_12m": {
+      "method": "monotonic_merge",
+      "edges": [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 2570,
+          "default_rate": 0.1237,
+          "woe": 0.3885
+        },
+        {
+          "label": "bin_01",
+          "loans": 3836,
+          "default_rate": 0.1517,
+          "woe": 0.1528
+        },
+        {
+          "label": "bin_02",
+          "loans": 3430,
+          "default_rate": 0.1793,
+          "woe": -0.0472
+        },
+        {
+          "label": "bin_03",
+          "loans": 2422,
+          "default_rate": 0.2007,
+          "woe": -0.1863
+        },
+        {
+          "label": "bin_04",
+          "loans": 1335,
+          "default_rate": 0.2037,
+          "woe": -0.206
+        },
+        {
+          "label": "bin_05",
+          "loans": 780,
+          "default_rate": 0.2628,
+          "woe": -0.5379
+        }
+      ],
+      "iv": 0.0591,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "mths_since_last_delinq": {
+      "method": "monotonic_merge",
+      "edges": [],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 7708,
+          "default_rate": 0.1773,
+          "woe": -0.0342
+        },
+        {
+          "label": "missing",
+          "loans": 6665,
+          "default_rate": 0.1667,
+          "woe": 0.0406
+        }
+      ],
+      "iv": 0.0014,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "emp_length_years": {
+      "method": "monotonic_merge",
+      "edges": [],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 13687,
+          "default_rate": 0.1713,
+          "woe": 0.0082
+        },
+        {
+          "label": "missing",
+          "loans": 686,
+          "default_rate": 0.1953,
+          "woe": -0.1555
+        }
+      ],
+      "iv": 0.0013,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "int_rate": {
+      "method": "monotonic_merge",
+      "edges": [
+        7.9,
+        10.15,
+        11.67,
+        12.35,
+        13.98,
+        14.98,
+        15.59,
+        16.99,
+        18.75,
+        22.15
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1226,
+          "default_rate": 0.0359,
+          "woe": 1.713
+        },
+        {
+          "label": "bin_01",
+          "loans": 1559,
+          "default_rate": 0.0641,
+          "woe": 1.1088
+        },
+        {
+          "label": "bin_02",
+          "loans": 1380,
+          "default_rate": 0.0884,
+          "woe": 0.7627
+        },
+        {
+          "label": "bin_03",
+          "loans": 864,
+          "default_rate": 0.1273,
+          "woe": 0.3541
+        },
+        {
+          "label": "bin_04",
+          "loans": 2139,
+          "default_rate": 0.1487,
+          "woe": 0.1769
+        },
+        {
+          "label": "bin_05",
+          "loans": 1376,
+          "default_rate": 0.1795,
+          "woe": -0.0488
+        },
+        {
+          "label": "bin_06",
+          "loans": 784,
+          "default_rate": 0.2092,
+          "woe": -0.2393
+        },
+        {
+          "label": "bin_07",
+          "loans": 1436,
+          "default_rate": 0.2145,
+          "woe": -0.27
+        },
+        {
+          "label": "bin_08",
+          "loans": 1449,
+          "default_rate": 0.2429,
+          "woe": -0.4312
+        },
+        {
+          "label": "bin_09",
+          "loans": 1424,
+          "default_rate": 0.309,
+          "woe": -0.7627
+        },
+        {
+          "label": "bin_10",
+          "loans": 736,
+          "default_rate": 0.3709,
+          "woe": -1.0394
+        }
+      ],
+      "iv": 0.4639,
+      "strength": "strong",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "credit_history_months_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        79.60000000000002,
+        146.0,
+        171.0,
+        199.0,
+        285.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 719,
+          "default_rate": 0.2045,
+          "woe": -0.2115
+        },
+        {
+          "label": "bin_01",
+          "loans": 3565,
+          "default_rate": 0.1874,
+          "woe": -0.1011
+        },
+        {
+          "label": "bin_02",
+          "loans": 2160,
+          "default_rate": 0.1847,
+          "woe": -0.084
+        },
+        {
+          "label": "bin_03",
+          "loans": 2176,
+          "default_rate": 0.1719,
+          "woe": 0.0036
+        },
+        {
+          "label": "bin_04",
+          "loans": 3564,
+          "default_rate": 0.1611,
+          "woe": 0.082
+        },
+        {
+          "label": "bin_05",
+          "loans": 2189,
+          "default_rate": 0.1444,
+          "woe": 0.2105
+        }
+      ],
+      "iv": 0.014,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "loan_to_income_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        0.08333333333333333,
+        0.11764705882352941,
+        0.1488095238095238,
+        0.2238855721393035,
+        0.3,
+        0.42545086119554226
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1415,
+          "default_rate": 0.1102,
+          "woe": 0.5179
+        },
+        {
+          "label": "bin_01",
+          "loans": 1437,
+          "default_rate": 0.1169,
+          "woe": 0.4519
+        },
+        {
+          "label": "bin_02",
+          "loans": 1459,
+          "default_rate": 0.133,
+          "woe": 0.3052
+        },
+        {
+          "label": "bin_03",
+          "loans": 3594,
+          "default_rate": 0.1503,
+          "woe": 0.1643
+        },
+        {
+          "label": "bin_04",
+          "loans": 2837,
+          "default_rate": 0.1967,
+          "woe": -0.1611
+        },
+        {
+          "label": "bin_05",
+          "loans": 2912,
+          "default_rate": 0.2332,
+          "woe": -0.3776
+        },
+        {
+          "label": "bin_06",
+          "loans": 719,
+          "default_rate": 0.2545,
+          "woe": -0.4947
+        }
+      ],
+      "iv": 0.1068,
+      "strength": "medium",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "installment_to_income_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        0.02391528,
+        0.0322116705882353,
+        0.044638363636363636,
+        0.06048857142857143,
+        0.06550581176470588,
+        0.09448363636363637,
+        0.11787863736263737
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 719,
+          "default_rate": 0.1043,
+          "woe": 0.577
+        },
+        {
+          "label": "bin_01",
+          "loans": 719,
+          "default_rate": 0.1057,
+          "woe": 0.5622
+        },
+        {
+          "label": "bin_02",
+          "loans": 1437,
+          "default_rate": 0.1204,
+          "woe": 0.4189
+        },
+        {
+          "label": "bin_03",
+          "loans": 2155,
+          "default_rate": 0.1439,
+          "woe": 0.2149
+        },
+        {
+          "label": "bin_04",
+          "loans": 719,
+          "default_rate": 0.1641,
+          "woe": 0.0571
+        },
+        {
+          "label": "bin_05",
+          "loans": 3592,
+          "default_rate": 0.1798,
+          "woe": -0.0506
+        },
+        {
+          "label": "bin_06",
+          "loans": 2157,
+          "default_rate": 0.2054,
+          "woe": -0.2152
+        },
+        {
+          "label": "bin_07",
+          "loans": 2875,
+          "default_rate": 0.2216,
+          "woe": -0.3114
+        }
+      ],
+      "iv": 0.0781,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "fico_mid_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        667.0,
+        677.0,
+        687.0,
+        692.0,
+        697.0,
+        707.0,
+        722.0,
+        732.0,
+        752.0
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1281,
+          "default_rate": 0.2326,
+          "woe": -0.3747
+        },
+        {
+          "label": "bin_01",
+          "loans": 2679,
+          "default_rate": 0.2176,
+          "woe": -0.2881
+        },
+        {
+          "label": "bin_02",
+          "loans": 2307,
+          "default_rate": 0.1938,
+          "woe": -0.1421
+        },
+        {
+          "label": "bin_03",
+          "loans": 1040,
+          "default_rate": 0.1913,
+          "woe": -0.1277
+        },
+        {
+          "label": "bin_04",
+          "loans": 1052,
+          "default_rate": 0.1673,
+          "woe": 0.0355
+        },
+        {
+          "label": "bin_05",
+          "loans": 1690,
+          "default_rate": 0.1521,
+          "woe": 0.1498
+        },
+        {
+          "label": "bin_06",
+          "loans": 1874,
+          "default_rate": 0.1505,
+          "woe": 0.1623
+        },
+        {
+          "label": "bin_07",
+          "loans": 803,
+          "default_rate": 0.1233,
+          "woe": 0.3903
+        },
+        {
+          "label": "bin_08",
+          "loans": 798,
+          "default_rate": 0.089,
+          "woe": 0.7528
+        },
+        {
+          "label": "bin_09",
+          "loans": 849,
+          "default_rate": 0.0777,
+          "woe": 0.8995
+        }
+      ],
+      "iv": 0.1084,
+      "strength": "medium",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "open_acc_share_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        0.3125,
+        0.36,
+        0.40425531914893614,
+        0.4444444444444444,
+        0.5555555555555556,
+        0.6206896551724138
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 2128,
+          "default_rate": 0.1447,
+          "woe": 0.2076
+        },
+        {
+          "label": "bin_01",
+          "loans": 1439,
+          "default_rate": 0.1515,
+          "woe": 0.1535
+        },
+        {
+          "label": "bin_02",
+          "loans": 1462,
+          "default_rate": 0.1628,
+          "woe": 0.0684
+        },
+        {
+          "label": "bin_03",
+          "loans": 1326,
+          "default_rate": 0.1712,
+          "woe": 0.0079
+        },
+        {
+          "label": "bin_04",
+          "loans": 3585,
+          "default_rate": 0.1738,
+          "woe": -0.0091
+        },
+        {
+          "label": "bin_05",
+          "loans": 1543,
+          "default_rate": 0.1776,
+          "woe": -0.0361
+        },
+        {
+          "label": "bin_06",
+          "loans": 2890,
+          "default_rate": 0.2042,
+          "woe": -0.2076
+        }
+      ],
+      "iv": 0.0181,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "recent_accounts_share_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        0.06666666666666667,
+        0.09523809523809523,
+        0.14285714285714285,
+        0.16,
+        0.2,
+        0.2222222222222222,
+        0.24324324324324326,
+        0.2692307692307692,
+        0.34615384615384615
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 2088,
+          "default_rate": 0.1169,
+          "woe": 0.4537
+        },
+        {
+          "label": "bin_01",
+          "loans": 1450,
+          "default_rate": 0.1269,
+          "woe": 0.3593
+        },
+        {
+          "label": "bin_02",
+          "loans": 2597,
+          "default_rate": 0.1452,
+          "woe": 0.2048
+        },
+        {
+          "label": "bin_03",
+          "loans": 1049,
+          "default_rate": 0.1687,
+          "woe": 0.0253
+        },
+        {
+          "label": "bin_04",
+          "loans": 1774,
+          "default_rate": 0.1736,
+          "woe": -0.0082
+        },
+        {
+          "label": "bin_05",
+          "loans": 1007,
+          "default_rate": 0.1797,
+          "woe": -0.0511
+        },
+        {
+          "label": "bin_06",
+          "loans": 810,
+          "default_rate": 0.2025,
+          "woe": -0.1984
+        },
+        {
+          "label": "bin_07",
+          "loans": 722,
+          "default_rate": 0.2175,
+          "woe": -0.2888
+        },
+        {
+          "label": "bin_08",
+          "loans": 1429,
+          "default_rate": 0.2267,
+          "woe": -0.3413
+        },
+        {
+          "label": "bin_09",
+          "loans": 1447,
+          "default_rate": 0.2502,
+          "woe": -0.4703
+        }
+      ],
+      "iv": 0.0901,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "revol_bal_to_income_treated": {
+      "method": "monotonic_merge",
+      "edges": [
+        0.058884285714285715,
+        0.14307380952380955,
+        0.25740432432432436,
+        0.38712613931523027
+      ],
+      "bins": [
+        {
+          "label": "bin_00",
+          "loans": 1438,
+          "default_rate": 0.1558,
+          "woe": 0.1203
+        },
+        {
+          "label": "bin_01",
+          "loans": 3593,
+          "default_rate": 0.1561,
+          "woe": 0.1187
+        },
+        {
+          "label": "bin_02",
+          "loans": 4311,
+          "default_rate": 0.1693,
+          "woe": 0.0219
+        },
+        {
+          "label": "bin_03",
+          "loans": 2875,
+          "default_rate": 0.1847,
+          "woe": -0.0837
+        },
+        {
+          "label": "bin_04",
+          "loans": 2156,
+          "default_rate": 0.2004,
+          "woe": -0.1848
+        }
+      ],
+      "iv": 0.0118,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "job_group": {
+      "method": "category_levels",
+      "edges": [],
+      "bins": [
+        {
+          "label": "education",
+          "loans": 457,
+          "default_rate": 0.151,
+          "woe": 0.1541
+        },
+        {
+          "label": "employer_name_era",
+          "loans": 3398,
+          "default_rate": 0.1648,
+          "woe": 0.0553
+        },
+        {
+          "label": "executive_owner",
+          "loans": 1131,
+          "default_rate": 0.153,
+          "woe": 0.1423
+        },
+        {
+          "label": "healthcare",
+          "loans": 780,
+          "default_rate": 0.1744,
+          "woe": -0.0148
+        },
+        {
+          "label": "manager_supervisor",
+          "loans": 2055,
+          "default_rate": 0.1727,
+          "woe": -0.0018
+        },
+        {
+          "label": "missing",
+          "loans": 824,
+          "default_rate": 0.1881,
+          "woe": -0.107
+        },
+        {
+          "label": "other_job",
+          "loans": 1389,
+          "default_rate": 0.1958,
+          "woe": -0.1557
+        },
+        {
+          "label": "professional_technical",
+          "loans": 1408,
+          "default_rate": 0.1406,
+          "woe": 0.2411
+        },
+        {
+          "label": "public_safety_government",
+          "loans": 356,
+          "default_rate": 0.1629,
+          "woe": 0.0628
+        },
+        {
+          "label": "sales_service_office",
+          "loans": 1394,
+          "default_rate": 0.1901,
+          "woe": -0.119
+        },
+        {
+          "label": "trades_transport_labor",
+          "loans": 1181,
+          "default_rate": 0.2007,
+          "woe": -0.1864
+        }
+      ],
+      "iv": 0.0159,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "purpose_group": {
+      "method": "category_levels",
+      "edges": [],
+      "bins": [
+        {
+          "label": "credit_card",
+          "loans": 3463,
+          "default_rate": 0.1458,
+          "woe": 0.1992
+        },
+        {
+          "label": "debt_consolidation",
+          "loans": 8616,
+          "default_rate": 0.1823,
+          "woe": -0.0674
+        },
+        {
+          "label": "home_improvement",
+          "loans": 794,
+          "default_rate": 0.1537,
+          "woe": 0.1352
+        },
+        {
+          "label": "major_purchase",
+          "loans": 223,
+          "default_rate": 0.1525,
+          "woe": 0.1357
+        },
+        {
+          "label": "other",
+          "loans": 641,
+          "default_rate": 0.1856,
+          "woe": -0.0924
+        },
+        {
+          "label": "other_purpose",
+          "loans": 636,
+          "default_rate": 0.1997,
+          "woe": -0.1824
+        }
+      ],
+      "iv": 0.0149,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "home_ownership_group": {
+      "method": "category_levels",
+      "edges": [],
+      "bins": [
+        {
+          "label": "MORTGAGE",
+          "loans": 7407,
+          "default_rate": 0.1535,
+          "woe": 0.1388
+        },
+        {
+          "label": "OWN",
+          "loans": 1406,
+          "default_rate": 0.1707,
+          "woe": 0.0109
+        },
+        {
+          "label": "RENT",
+          "loans": 5560,
+          "default_rate": 0.198,
+          "woe": -0.1698
+        }
+      ],
+      "iv": 0.0213,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "addr_state_group": {
+      "method": "category_levels",
+      "edges": [],
+      "bins": [
+        {
+          "label": "AL",
+          "loans": 187,
+          "default_rate": 0.1497,
+          "woe": 0.1586
+        },
+        {
+          "label": "AZ",
+          "loans": 348,
+          "default_rate": 0.1782,
+          "woe": -0.041
+        },
+        {
+          "label": "CA",
+          "loans": 2129,
+          "default_rate": 0.178,
+          "woe": -0.0348
+        },
+        {
+          "label": "CO",
+          "loans": 310,
+          "default_rate": 0.1387,
+          "woe": 0.2528
+        },
+        {
+          "label": "CT",
+          "loans": 194,
+          "default_rate": 0.1598,
+          "woe": 0.0833
+        },
+        {
+          "label": "FL",
+          "loans": 920,
+          "default_rate": 0.1783,
+          "woe": -0.0378
+        },
+        {
+          "label": "GA",
+          "loans": 462,
+          "default_rate": 0.1342,
+          "woe": 0.294
+        },
+        {
+          "label": "IL",
+          "loans": 601,
+          "default_rate": 0.1531,
+          "woe": 0.1426
+        },
+        {
+          "label": "IN",
+          "loans": 270,
+          "default_rate": 0.1963,
+          "woe": -0.1611
+        },
+        {
+          "label": "KS",
+          "loans": 157,
+          "default_rate": 0.1401,
+          "woe": 0.2319
+        },
+        {
+          "label": "KY",
+          "loans": 156,
+          "default_rate": 0.2051,
+          "woe": -0.2205
+        },
+        {
+          "label": "LA",
+          "loans": 168,
+          "default_rate": 0.1488,
+          "woe": 0.1641
+        },
+        {
+          "label": "MA",
+          "loans": 295,
+          "default_rate": 0.1729,
+          "woe": -0.0059
+        },
+        {
+          "label": "MD",
+          "loans": 348,
+          "default_rate": 0.1724,
+          "woe": -0.0015
+        },
+        {
+          "label": "MI",
+          "loans": 371,
+          "default_rate": 0.1941,
+          "woe": -0.145
+        },
+        {
+          "label": "MN",
+          "loans": 267,
+          "default_rate": 0.1685,
+          "woe": 0.0236
+        },
+        {
+          "label": "MO",
+          "loans": 226,
+          "default_rate": 0.1947,
+          "woe": -0.1523
+        },
+        {
+          "label": "NC",
+          "loans": 407,
+          "default_rate": 0.199,
+          "woe": -0.1757
+        },
+        {
+          "label": "NJ",
+          "loans": 583,
+          "default_rate": 0.1921,
+          "woe": -0.1306
+        },
+        {
+          "label": "NV",
+          "loans": 203,
+          "default_rate": 0.202,
+          "woe": -0.1986
+        },
+        {
+          "label": "NY",
+          "loans": 1150,
+          "default_rate": 0.2,
+          "woe": -0.1789
+        },
+        {
+          "label": "OH",
+          "loans": 448,
+          "default_rate": 0.1607,
+          "woe": 0.0838
+        },
+        {
+          "label": "OK",
+          "loans": 147,
+          "default_rate": 0.2109,
+          "woe": -0.2557
+        },
+        {
+          "label": "OR",
+          "loans": 190,
+          "default_rate": 0.1632,
+          "woe": 0.0585
+        },
+        {
+          "label": "PA",
+          "loans": 495,
+          "default_rate": 0.1818,
+          "woe": -0.0638
+        },
+        {
+          "label": "SC",
+          "loans": 167,
+          "default_rate": 0.1737,
+          "woe": -0.0171
+        },
+        {
+          "label": "TN",
+          "loans": 254,
+          "default_rate": 0.1732,
+          "woe": -0.0096
+        },
+        {
+          "label": "TX",
+          "loans": 1144,
+          "default_rate": 0.153,
+          "woe": 0.1456
+        },
+        {
+          "label": "VA",
+          "loans": 418,
+          "default_rate": 0.1531,
+          "woe": 0.1405
+        },
+        {
+          "label": "WA",
+          "loans": 339,
+          "default_rate": 0.1475,
+          "woe": 0.1826
+        },
+        {
+          "label": "WI",
+          "loans": 171,
+          "default_rate": 0.1404,
+          "woe": 0.2316
+        },
+        {
+          "label": "other_addr_state",
+          "loans": 848,
+          "default_rate": 0.1639,
+          "woe": 0.0629
+        }
+      ],
+      "iv": 0.018,
+      "strength": "useless",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "verification_status": {
+      "method": "category_levels",
+      "edges": [],
+      "bins": [
+        {
+          "label": "Not Verified",
+          "loans": 4257,
+          "default_rate": 0.1271,
+          "woe": 0.358
+        },
+        {
+          "label": "Source Verified",
+          "loans": 4941,
+          "default_rate": 0.1898,
+          "woe": -0.1175
+        },
+        {
+          "label": "Verified",
+          "loans": 5175,
+          "default_rate": 0.193,
+          "woe": -0.1382
+        }
+      ],
+      "iv": 0.0458,
+      "strength": "weak",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "term": {
+      "method": "category_levels",
+      "edges": [],
+      "bins": [
+        {
+          "label": "36",
+          "loans": 10545,
+          "default_rate": 0.1324,
+          "woe": 0.3114
+        },
+        {
+          "label": "60",
+          "loans": 3828,
+          "default_rate": 0.2827,
+          "woe": -0.6373
+        }
+      ],
+      "iv": 0.1952,
+      "strength": "medium",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    },
+    "grade": {
+      "method": "category_levels",
+      "edges": [],
+      "bins": [
+        {
+          "label": "A",
+          "loans": 2162,
+          "default_rate": 0.0449,
+          "woe": 1.4857
+        },
+        {
+          "label": "B",
+          "loans": 4131,
+          "default_rate": 0.1082,
+          "woe": 0.5407
+        },
+        {
+          "label": "C",
+          "loans": 4069,
+          "default_rate": 0.19,
+          "woe": -0.1179
+        },
+        {
+          "label": "D",
+          "loans": 2390,
+          "default_rate": 0.2464,
+          "woe": -0.4504
+        },
+        {
+          "label": "E",
+          "loans": 1122,
+          "default_rate": 0.3316,
+          "woe": -0.867
+        },
+        {
+          "label": "F",
+          "loans": 406,
+          "default_rate": 0.3818,
+          "woe": -1.0868
+        },
+        {
+          "label": "G",
+          "loans": 93,
+          "default_rate": 0.4839,
+          "woe": -1.5037
+        }
+      ],
+      "iv": 0.4544,
+      "strength": "strong",
+      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+      "unseen_value_woe": 0.0
+    }
+  },
+  "pca": [
+    {
+      "name": "pc_1",
+      "method": "pca_standardized",
+      "variance_explained": 0.2276,
+      "top_loadings": {
+        "tot_hi_cred_lim_log": 0.813,
+        "total_rev_hi_lim_log": 0.74,
+        "annual_inc_log": 0.683
+      }
+    },
+    {
+      "name": "pc_2",
+      "method": "pca_standardized",
+      "variance_explained": 0.133,
+      "top_loadings": {
+        "revol_util_treated": 0.767,
+        "bc_util_treated": 0.689,
+        "acc_open_past_24mths": -0.617
+      }
+    },
+    {
+      "name": "pc_3",
+      "method": "pca_standardized",
+      "variance_explained": 0.1045,
+      "top_loadings": {
+        "fico_mid_treated": 0.721,
+        "bc_util_treated": -0.588,
+        "revol_util_treated": -0.524
+      }
+    },
+    {
+      "name": "pc_4",
+      "method": "pca_standardized",
+      "variance_explained": 0.0915,
+      "top_loadings": {
+        "pub_rec_capped": 0.67,
+        "pub_rec_bankruptcies_capped": 0.646,
+        "mort_acc_capped": 0.448
+      }
+    },
+    {
+      "name": "pc_5",
+      "method": "pca_standardized",
+      "variance_explained": 0.0727,
+      "top_loadings": {
+        "installment_log": 0.526,
+        "loan_amnt_log": 0.513,
+        "avg_cur_bal_log": -0.474
+      }
+    },
+    {
+      "name": "pc_6",
+      "method": "pca_standardized",
+      "variance_explained": 0.0628,
+      "top_loadings": {
+        "credit_history_months_treated": 0.448,
+        "dti_treated": 0.398,
+        "inq_last_6mths_capped": -0.37
+      }
+    },
+    {
+      "name": "pc_7",
+      "method": "pca_standardized",
+      "variance_explained": 0.0541,
+      "top_loadings": {
+        "delinq_2yrs_capped": 0.803,
+        "avg_cur_bal_log": -0.299,
+        "credit_history_months_treated": 0.257
+      }
+    }
+  ],
+  "factors": [
+    {
+      "name": "credit_capacity",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "avg_cur_bal_log": 0.968,
+        "tot_hi_cred_lim_log": 0.913,
+        "mort_acc_capped": 0.538
+      },
+      "variance_explained": 0.1201
+    },
+    {
+      "name": "loan_size",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "installment_log": 0.962,
+        "loan_amnt_log": 0.956,
+        "annual_inc_log": 0.363
+      },
+      "variance_explained": 0.1046
+    },
+    {
+      "name": "revolving_credit_size",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "total_rev_hi_lim_log": 0.867,
+        "revol_bal_log": 0.831,
+        "open_acc": 0.25
+      },
+      "variance_explained": 0.0879
+    },
+    {
+      "name": "account_count",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "open_acc": 0.866,
+        "total_acc": 0.629,
+        "acc_open_past_24mths": 0.279
+      },
+      "variance_explained": 0.0723
+    },
+    {
+      "name": "revolving_utilization",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "revol_util_treated": 0.94,
+        "bc_util_treated": 0.849,
+        "fico_mid_treated": -0.559
+      },
+      "variance_explained": 0.1052
+    },
+    {
+      "name": "public_records",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "pub_rec_bankruptcies_capped": 0.885,
+        "pub_rec_capped": 0.869,
+        "fico_mid_treated": -0.219
+      },
+      "variance_explained": 0.0793
+    },
+    {
+      "name": "recent_account_opening",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "num_tl_op_past_12m": 0.823,
+        "acc_open_past_24mths": 0.813,
+        "inq_last_6mths_capped": 0.276
+      },
+      "variance_explained": 0.0769
+    },
+    {
+      "name": "debt_burden",
+      "method": "factor_analysis_varimax",
+      "top_loadings": {
+        "dti_treated": 0.598,
+        "annual_inc_log": -0.518,
+        "mort_acc_capped": -0.183
+      },
+      "variance_explained": 0.0349
+    }
+  ],
+  "excluded_fields": [
+    {
+      "name": "title",
+      "source": "applications",
+      "reason": "Borrower-typed text; 1,821 distinct values that mostly restate purpose."
+    },
+    {
+      "name": "bureau_recovery_flag",
+      "source": "credit_bureau",
+      "reason": "Leak: identical to `recoveries > 0` in the servicing file (4,207 of 4,207 loans), and every flagged loan defaulted (single-field AUC 0.91). Always 0 in the 2016 holdout."
+    },
+    {
+      "name": "total_pymnt",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. Payments made so far reveal the outcome. Alone it predicts default with AUC 0.72 (application-time fields: 0.51 to 0.59)."
+    },
+    {
+      "name": "total_rec_prncp",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. Principal repaid reveals the outcome. Alone it predicts default with AUC 0.85 (application-time fields: 0.51 to 0.59)."
+    },
+    {
+      "name": "total_rec_int",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. Interest paid reveals how long the loan ran."
+    },
+    {
+      "name": "recoveries",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. Money recovered after a charge-off: only exists for defaulted loans. Alone it predicts default with AUC 0.91 (application-time fields: 0.51 to 0.59)."
+    },
+    {
+      "name": "last_pymnt_d",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies."
+    },
+    {
+      "name": "last_pymnt_amnt",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. 249 values exceed the total paid. Alone it predicts default with AUC 0.78 (application-time fields: 0.51 to 0.59)."
+    },
+    {
+      "name": "last_credit_pull_d",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies."
+    },
+    {
+      "name": "last_fico_range_high",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. A later score, lower for defaulters (mean 571 vs 701). Alone it predicts default with AUC 0.91 (application-time fields: 0.51 to 0.59)."
+    },
+    {
+      "name": "last_fico_range_low",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. A later score."
+    },
+    {
+      "name": "debt_settlement_flag",
+      "source": "loan_servicing",
+      "reason": "Recorded after the loan was issued; not known when the applicant applies. Every loan flagged Y (763) defaulted: a leak."
+    }
+  ],
+  "platform_score_fields": [
+    "int_rate",
+    "grade",
+    "sub_grade"
+  ],
+  "restricted_fields": [
+    "emp_title",
+    "zip_code",
+    "addr_state"
+  ]
+}

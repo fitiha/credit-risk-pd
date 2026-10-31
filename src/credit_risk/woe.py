@@ -59,6 +59,7 @@ def strength(iv):
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from credit_risk.binning import assign_bins, fit_edges
+from credit_risk.frames import add_columns
 from credit_risk.io import FIT_CUTOFF
 
 
@@ -84,7 +85,19 @@ class WoEEncoder(BaseEstimator, TransformerMixin):
             self.tables_[f] = woe_table(assign_bins(pre[f], self.edges_[f]), y)
         for f in self.categorical or []:
             self.tables_[f] = woe_table(pre[f].fillna("missing"), y)
+        self._build_lookups()
         return self
+
+    def _build_lookups(self):
+        """Per-field arrays and dictionaries so scoring is a plain lookup (fast for a single application)."""
+        self.lookup_ = {}
+        for f, t in self.tables_.items():
+            woe = dict(zip(t.group, t.woe))
+            if f in self.edges_:
+                n = len(self.edges_[f]) + 1
+                self.lookup_[f] = (np.array([woe.get(f"bin_{i:02d}", 0.0) for i in range(n)]), woe.get("missing", 0.0))
+            else:
+                self.lookup_[f] = woe
 
     def _groups(self, X, f):
         if f in self.edges_:
@@ -92,10 +105,16 @@ class WoEEncoder(BaseEstimator, TransformerMixin):
         return X[f].fillna("missing")
 
     def transform(self, X):
-        d = X.copy()
-        for f, t in self.tables_.items():
-            d[f"{f}_woe"] = apply_woe(self._groups(d, f), t)
-        return d
+        new = {}
+        for f in self.tables_:
+            if f in self.edges_:
+                by_bin, missing = self.lookup_[f]
+                x = X[f].to_numpy(float)
+                new[f"{f}_woe"] = np.where(np.isnan(x), missing, by_bin[np.searchsorted(self.edges_[f], x, side="right").clip(0, len(by_bin) - 1)])
+            else:
+                lookup = self.lookup_[f]
+                new[f"{f}_woe"] = [lookup.get("missing" if pd.isna(v) else v, 0.0) for v in X[f].to_numpy(object)]
+        return add_columns(X, new)
 
     def iv_table(self):
         rows = [{"field": f, "kind": "numeric" if f in self.edges_ else "categorical", "bins_or_groups": len(t),

@@ -11,15 +11,23 @@ from credit_risk.factors import FactorModel
 from credit_risk.io import percent_columns_stored_as_fractions
 from credit_risk.features import FeatureBuilder, FeatureTreater
 from credit_risk.outliers import AmountTreater, CountTreater, RatioTreater
+from credit_risk.woe import WoEEncoder
+from credit_risk.woe_fields import WOE_CATEGORICAL, WOE_NUMERIC
+
+CONTRACT_VERSION = "1.0.0"
 
 
 class ApplicationTransformer(BaseEstimator, TransformerMixin):
-    """Cleaning, outlier treatment, application-time features, category grouping, PCA components and factor scores."""
+    """Cleaning, outlier treatment, application-time features, category grouping, PCA components, factor scores and WoE.
+
+    `fit` needs the label column (`defaulted`) for the WoE step; `transform` does not."""
+    contract_version = CONTRACT_VERSION
 
     def _new_steps(self):
         return [("cleaner", Cleaner()), ("amounts", AmountTreater()), ("ratios", RatioTreater()),
                 ("counts", CountTreater()), ("features", FeatureBuilder()), ("feature_treater", FeatureTreater()),
-                ("categories", CategoryGrouper()), ("factors", FactorModel())]
+                ("categories", CategoryGrouper()), ("factors", FactorModel()),
+                ("woe", WoEEncoder(numeric=WOE_NUMERIC, categorical=WOE_CATEGORICAL))]
 
     @staticmethod
     def _check_units(X):
