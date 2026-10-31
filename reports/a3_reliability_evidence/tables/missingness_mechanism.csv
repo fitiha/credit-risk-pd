@@ -3,3 +3,4 @@ emp_title,0.834,6.057,5.541
 emp_length,0.872,4.225,5.098
 mths_since_last_delinq,0.806,50.533,43.905
 bc_util,0.801,0.916,1.13
+earliest_cr_line (corrupted date),0.493,1.196,0.765

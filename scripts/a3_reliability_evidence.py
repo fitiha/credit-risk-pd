@@ -14,7 +14,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 
 from credit_risk.cleaning import Cleaner
-from credit_risk.io import FIT_CUTOFF, load_applications
+from credit_risk.io import FIT_CUTOFF, load_applications, load_servicing
+from sklearn.metrics import roc_auc_score
 from credit_risk.reporting import fresh_dirs
 from credit_risk.stats import wilson_interval
 
@@ -62,7 +63,7 @@ fit["title_missing"] = fit.title.isna()
 fit["bc_util_gap"] = fit.bc_util.isna() & ~fit.bc_util_invalid
 FIELDS = {"emp_title": fit.emp_title.isna(), "emp_length": fit.emp_length.isna(), "title": fit.title.isna(),
           "mths_since_last_delinq": fit.mths_since_last_delinq.isna(), "bc_util": fit.bc_util_gap,
-          "revol_util": fit.revol_util.isna()}
+          "revol_util": fit.revol_util.isna(), "earliest_cr_line (corrupted date)": fit.earliest_cr_line_invalid}
 num = fit[["annual_inc", "loan_amnt", "fico_range_low", "total_acc", "open_acc", "delinq_2yrs", "pub_rec",
            "inq_last_6mths", "revol_bal", "tot_cur_bal", "dti", "int_rate", "term"]].copy()
 num[["annual_inc", "loan_amnt", "revol_bal", "tot_cur_bal"]] = np.log1p(num[["annual_inc", "loan_amnt", "revol_bal", "tot_cur_bal"]])
@@ -101,6 +102,39 @@ ms = fit[fit.mths_since_last_delinq.isna()]
 print("mths_since_last_delinq missing: share with delinq_2yrs=0:", round((ms.delinq_2yrs == 0).mean(), 3), "| share with pub_rec=0:", round((ms.pub_rec == 0).mean(), 3),
       "| present-group share with delinq_2yrs=0:", round((fit.mths_since_last_delinq.notna() & (fit.delinq_2yrs == 0)).sum() / fit.mths_since_last_delinq.notna().sum(), 3))
 
+# 4. rule checks behind the "high" ratings (all loans)
+checks = {
+    "open_acc above total_acc": d.open_acc > d.total_acc,
+    "avg_cur_bal above tot_cur_bal": d.avg_cur_bal > d.tot_cur_bal + 1,
+    "total_rev_hi_lim above tot_hi_cred_lim": d.total_rev_hi_lim > d.tot_hi_cred_lim,
+    "pub_rec_bankruptcies above pub_rec": d.pub_rec_bankruptcies > d.pub_rec,
+    "acc_open_past_24mths above total_acc": d.acc_open_past_24mths > d.total_acc,
+    "num_tl_op_past_12m above acc_open_past_24mths": d.num_tl_op_past_12m > d.acc_open_past_24mths,
+    "FICO outside 300-850": (d.fico_range_low < 300) | (d.fico_range_high > 850),
+    "FICO range width not 4": (d.fico_range_high - d.fico_range_low) != 4,
+    "negative value in a bureau count": (d[["inq_last_6mths", "delinq_2yrs", "pub_rec", "pub_rec_bankruptcies", "open_acc", "total_acc",
+                                            "mort_acc", "acc_open_past_24mths", "num_tl_op_past_12m"]] < 0).any(axis=1),
+    "non-whole bureau count": (d[["inq_last_6mths", "delinq_2yrs", "pub_rec", "open_acc", "total_acc", "mort_acc"]] % 1 != 0).any(axis=1),
+    "installment above 40% of income": d.installment * 12 / d.annual_inc > .4,
+}
+pd.Series({k: int(v.sum()) for k, v in checks.items()}, name="loans_violating").to_csv(TAB / "bureau_consistency_checks.csv", index_label="check")
+
+# 5. leakage scan: how well does ONE field alone predict default? (servicing used for audit only)
+srv = load_servicing().set_index("id")
+inputs = ["loan_amnt", "annual_inc", "dti", "int_rate", "fico_range_low", "revol_util", "delinq_2yrs", "inq_last_6mths", "open_acc", "tot_hi_cred_lim"]
+scan = []
+for c in inputs:
+    x = fit[c].fillna(fit[c].median())
+    a = roc_auc_score(fit.defaulted, x); scan.append({"field": c, "known_at_application": True, "single_field_auc": max(a, 1 - a)})
+sv = srv.reindex(fit.id)
+for c in ["total_rec_prncp", "total_pymnt", "recoveries", "last_fico_range_high", "last_pymnt_amnt"]:
+    x = sv[c].fillna(sv[c].median()).to_numpy()
+    a = roc_auc_score(fit.defaulted, x); scan.append({"field": c, "known_at_application": False, "single_field_auc": max(a, 1 - a)})
+flag = raw.set_index("id").bureau_recovery_flag.reindex(fit.id).to_numpy()
+scan.append({"field": "bureau_recovery_flag", "known_at_application": False, "single_field_auc": roc_auc_score(fit.defaulted, flag)})
+scan = pd.DataFrame(scan)
+scan.round(3).to_csv(TAB / "leakage_scan_single_field_auc.csv", index=False)
+
 fig, ax = plt.subplots(figsize=(7.5, 4))
 y = range(len(dr))
 ax.errorbar(dr.default_rate_when_missing * 100, y, xerr=[(dr.default_rate_when_missing - dr.ci_low) * 100, (dr.ci_high - dr.default_rate_when_missing) * 100],
@@ -124,4 +158,5 @@ print("\nCONSISTENCY WITH INCOME\n", cons.round(3).T.to_string(header=False))
 print("\nMISSINGNESS vs DEFAULT\n", dr.round(3).to_string(index=False))
 print("\nMISSINGNESS MECHANISM (AUC 0.5 = unpredictable from other fields)\n", mech.round(3).to_string(index=False))
 print("\n", overlap.to_string())
+print("\nLEAKAGE SCAN (single-field AUC)\n", scan.round(3).to_string(index=False))
 print("\nTOP PREDICTORS OF MISSINGNESS\n", pd.DataFrame(drivers).round(2).to_string(index=False))

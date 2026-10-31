@@ -1,0 +1,12 @@
+check,loans_violating
+open_acc above total_acc,0
+avg_cur_bal above tot_cur_bal,0
+total_rev_hi_lim above tot_hi_cred_lim,0
+pub_rec_bankruptcies above pub_rec,0
+acc_open_past_24mths above total_acc,0
+num_tl_op_past_12m above acc_open_past_24mths,0
+FICO outside 300-850,0
+FICO range width not 4,2
+negative value in a bureau count,0
+non-whole bureau count,0
+installment above 40% of income,0

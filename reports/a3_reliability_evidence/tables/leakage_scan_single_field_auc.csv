@@ -1,0 +1,17 @@
+field,known_at_application,single_field_auc
+loan_amnt,True,0.538
+annual_inc,True,0.552
+dti,True,0.574
+int_rate,True,0.681
+fico_range_low,True,0.586
+revol_util,True,0.546
+delinq_2yrs,True,0.509
+inq_last_6mths,True,0.547
+open_acc,True,0.521
+tot_hi_cred_lim,True,0.55
+total_rec_prncp,False,0.852
+total_pymnt,False,0.723
+recoveries,False,0.906
+last_fico_range_high,False,0.911
+last_pymnt_amnt,False,0.78
+bureau_recovery_flag,False,0.906

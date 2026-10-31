@@ -19,3 +19,8 @@ bc_util,2,total_acc,0.611
 bc_util,3,dti,0.369
 bc_util,4,revol_bal,-0.325
 bc_util,5,loan_amnt,-0.282
+earliest_cr_line (corrupted date),1,term,0.276
+earliest_cr_line (corrupted date),2,grade_G,-0.227
+earliest_cr_line (corrupted date),3,year,-0.191
+earliest_cr_line (corrupted date),4,purpose_vacation,-0.184
+earliest_cr_line (corrupted date),5,tot_cur_bal,-0.174
