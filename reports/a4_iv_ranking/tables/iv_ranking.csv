@@ -1,4 +1,5 @@
 field,kind,bins_or_groups,iv,strength,role
+sub_grade,categorical,35,0.5035,suspicious,platform score
 int_rate,numeric,11,0.4639,strong,platform score
 grade,categorical,7,0.4544,strong,platform score
 term,categorical,2,0.1952,medium,input

@@ -22,7 +22,12 @@ d = ApplicationTransformer().fit(raw).transform(raw)
 NUMERIC, CATEGORICAL = WOE_NUMERIC, WOE_CATEGORICAL
 enc = WoEEncoder(numeric=NUMERIC, categorical=CATEGORICAL).fit(d)
 iv = enc.iv_table()
-role = {"int_rate": "platform score", "grade": "platform score", "job_group": "restricted", "addr_state_group": "restricted"}
+# sub_grade (35 levels) is a platform score like grade; it is ranked here but gets no contract column
+fit_rows = d[d.issue_d <= FIT_CUTOFF]
+sub = information_value(woe_table(fit_rows.sub_grade.astype(str), fit_rows.defaulted))
+iv = pd.concat([iv, pd.DataFrame([{"field": "sub_grade", "kind": "categorical", "bins_or_groups": fit_rows.sub_grade.nunique(),
+                                   "iv": sub, "strength": strength(sub)}])], ignore_index=True).sort_values("iv", ascending=False)
+role = {"int_rate": "platform score", "grade": "platform score", "sub_grade": "platform score", "job_group": "restricted", "addr_state_group": "restricted"}
 iv["role"] = iv.field.map(role).fillna("input")
 iv.round(4).to_csv(TAB / "iv_ranking.csv", index=False)
 

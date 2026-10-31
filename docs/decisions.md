@@ -280,18 +280,21 @@ other fields.
 
 ## Information value ranking and the "too good to be true" check
 
-`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 7 categorical fields (bins and
+`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 8 categorical fields (the 8th is `sub_grade`, ranked but not in the contract) (bins and
 groups as decided above). Output: `reports/a4_iv_ranking/`.
 
 | Field | IV | Reading |
 |---|---|---|
+| `sub_grade` | 0.50 | on the 0.5 line: the platform's own score at 35 levels (a ranked scale with 15 monotone bins gives 0.49) |
 | `int_rate`, `grade` | 0.46, 0.45 | strong, close to the 0.5 line: the platform's own score |
 | `term` | 0.20 | medium |
 | `fico_mid`, `loan_to_income` | 0.11, 0.11 | medium: the strongest fields the model builds itself |
 | `recent_accounts_share`, `acc_open_past_24mths`, `installment_to_income`, `dti`, `num_tl_op_past_12m` | 0.06 to 0.09 | weak |
 | most other fields | under 0.05 | weak or useless; 16 of 37 fields are below 0.02 |
 
-**The only IV near the suspicious zone is the platform's own score, and it is not a leak.** `int_rate` has
+**The only IVs near or on the suspicious line are the platform's own score (`sub_grade` 0.50, `int_rate` 0.46, `grade` 0.45), and
+they are not leaks.** Part of `sub_grade`'s edge over `grade` is only that 35 levels give the calculation more room to fit noise.
+`sub_grade` is ranked here but has no contract column. `int_rate` has
 11 bins with a smooth, one-directional pattern, from 3.6% default in the lowest-rate bin (WoE +1.71) to 37.1% in
 the highest (WoE -1.04). It is strong because the platform's existing risk model set it from the same applicant
 data, so it is an echo of a model that already knew these fields. It is known at application time and consistent,
