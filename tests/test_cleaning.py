@@ -12,7 +12,7 @@ def row(**kw):
         int_rate=12.0, installment=332.14, grade="B", sub_grade="B3",
         emp_title="  Teacher ", annual_inc=60000.0, addr_state="CA",
         earliest_cr_line="Jan-2000", fico_range_low=680.0, fico_range_high=684.0,
-        revol_util=40.0, bc_util=50.0, bureau_recovery_flag=0,
+        revol_util=40.0, bc_util=50.0, bureau_recovery_flag=0, revol_bal=4000.0, total_rev_hi_lim=10000.0, tot_cur_bal=50000.0,
     )
     base.update(kw)
     return base
@@ -84,3 +84,43 @@ def test_spec_rules_state_thresholds_and_fitted_rates():
     rules = Cleaner().fit(df).spec_rules()
     assert "1,000" in rules["annual_inc"]
     assert rules["median_int_rate_by_sub_grade"] == {"B3": 12.0}
+
+
+def test_revolving_balance_times_ten_is_fixed_using_utilisation_and_limit():
+    ok = row(revol_bal=6000.0, revol_util=50.0, total_rev_hi_lim=12000.0)
+    bad = row(revol_bal=60000.0, revol_util=50.0, total_rev_hi_lim=12000.0)  # balance 10x too large
+    out = clean(ok, bad)
+    assert out["revol_bal"].tolist() == [6000.0, 6000.0] and out["revol_bal_fixed"].tolist() == [False, True]
+
+
+def test_balance_check_needs_a_usable_utilisation_and_limit():
+    rows = [row(revol_bal=60000.0, revol_util=0.5, total_rev_hi_lim=12000.0),    # utilisation under 1%: not checkable
+            row(revol_bal=60000.0, revol_util=50.0, total_rev_hi_lim=0.0),       # no limit
+            row(revol_bal=60000.0, revol_util=np.nan, total_rev_hi_lim=12000.0)]  # no utilisation
+    out = clean(*rows)
+    assert out["revol_bal"].tolist() == [60000.0] * 3 and not out["revol_bal_fixed"].any()
+
+
+def test_a_balance_larger_than_the_total_balance_is_fixed_even_when_utilisation_cannot_confirm_it():
+    bad = row(revol_bal=600000.0, revol_util=np.nan, total_rev_hi_lim=12000.0, tot_cur_bal=100000.0)
+    fine = row(revol_bal=6000.0, revol_util=np.nan, total_rev_hi_lim=12000.0, tot_cur_bal=100000.0)
+    slightly_over = row(revol_bal=105000.0, revol_util=np.nan, total_rev_hi_lim=120000.0, tot_cur_bal=100000.0)  # timing noise, not 10x
+    out = clean(bad, fine, slightly_over)
+    assert out["revol_bal"].tolist() == [60000.0, 6000.0, 105000.0]
+
+
+import pytest
+from pathlib import Path
+
+
+@pytest.mark.skipif(not Path("data/applications.csv").exists(), reason="data files not present")
+def test_cleaned_training_data_satisfies_the_accounting_identities():
+    from credit_risk.io import load_applications
+
+    raw = load_applications("data")
+    c = Cleaner().fit(raw).transform(raw)
+    assert (c.revol_bal > 1.5 * c.tot_cur_bal).sum() == 0                   # a balance cannot exceed the total that contains it
+    assert (c.open_acc > c.total_acc).sum() == 0 and (c.total_rev_hi_lim > c.tot_hi_cred_lim).sum() == 0
+    util = (100 * c.revol_bal / c.total_rev_hi_lim.where(c.total_rev_hi_lim > 0)) / c.revol_util.abs().where(c.revol_util.abs() > 1)
+    assert util.between(8, 20).sum() == 0                                   # no loan left with a tenfold balance
+    assert util.between(0.8, 1.25).mean() > 0.95                            # and the great majority agree with the reported utilisation

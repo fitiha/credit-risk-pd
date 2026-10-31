@@ -23,11 +23,14 @@ class Cleaner(BaseEstimator, TransformerMixin):
     """Turn a raw application+bureau table into a cleaned one."""
 
     def __init__(self, income_thousands_below=1000, placeholder_rate=6.0,
-                 amount_ratio=10.0, amount_ratio_tol=0.5):
+                 amount_ratio=10.0, amount_ratio_tol=0.5, balance_ratio_range=(8.0, 20.0), balance_min_util=1.0, balance_over_total=1.5):
         self.income_thousands_below = income_thousands_below
         self.placeholder_rate = placeholder_rate
         self.amount_ratio = amount_ratio
         self.amount_ratio_tol = amount_ratio_tol
+        self.balance_ratio_range = balance_ratio_range
+        self.balance_over_total = balance_over_total
+        self.balance_min_util = balance_min_util
 
     def fit(self, X, y=None):
         """Learn median interest rate per sub_grade from pre-cutoff loans."""
@@ -60,6 +63,20 @@ class Cleaner(BaseEstimator, TransformerMixin):
         shifted = (ratio - self.amount_ratio).abs() < self.amount_ratio_tol
         d["loan_amnt_fixed"] = shifted
         d.loc[shifted, "loan_amnt"] = d.loc[shifted, "loan_amnt"] / 10
+
+        # issue 38: revolving balance 10x too large. The utilisation and the limit are right, so the utilisation implied
+        # by balance / limit is a multiple of the reported one: 9-11x for most, up to about 16x because the bureau reports
+        # utilisation at a slightly different moment. Genuine loans sit at 0.8-1.25x. Needs a utilisation above 1% and a
+        # nonzero limit to be checkable.
+        limit = d["total_rev_hi_lim"].where(d["total_rev_hi_lim"] > 0)
+        implied_ratio = (100 * d["revol_bal"] / limit) / d["revol_util"].abs().where(d["revol_util"].abs() > self.balance_min_util)
+        low, high = self.balance_ratio_range
+        big_balance = implied_ratio.between(low, high)
+        # second, independent check: a revolving balance cannot exceed the total current balance (which includes it)
+        total = d["tot_cur_bal"].where(d["tot_cur_bal"] > 0)
+        big_balance |= (d["revol_bal"] > self.balance_over_total * total) & (d["revol_bal"] / 10 <= self.balance_over_total * total)
+        d["revol_bal_fixed"] = big_balance
+        d.loc[big_balance, "revol_bal"] = d.loc[big_balance, "revol_bal"] / 10
 
         # issue 10: income typed in thousands
         small = d["annual_inc"] < self.income_thousands_below
@@ -96,6 +113,7 @@ class Cleaner(BaseEstimator, TransformerMixin):
             "loan_amnt": f"if the payment implied by amount, rate and term is {self.amount_ratio:g}x the installment "
                          f"(within {self.amount_ratio_tol:g}), the amount is divided by 10",
             "int_rate": f"exactly {self.placeholder_rate:g} is a placeholder, replaced by the median rate of the sub_grade",
+            "revol_bal": f"if balance / limit is {self.balance_ratio_range[0]:g} to {self.balance_ratio_range[1]:g} times the reported utilisation, or the balance exceeds {self.balance_over_total:g}x the total current balance and a tenth of it fits, the balance is divided by 10",
             "revol_util": "negative values: sign removed",
             "bc_util": "negative values: set to missing, indicator added",
             "fico_range": "low and high swapped when low > high",

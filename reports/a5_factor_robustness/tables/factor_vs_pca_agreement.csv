@@ -1,9 +1,9 @@
 factor,best_abs_correlation_with_a_pca_component,best_matching_component
-credit_capacity,0.582,pc_1
-loan_size,0.604,pc_5
-revolving_credit_size,0.479,pc_1
-account_count,0.368,pc_1
-revolving_utilization,0.679,pc_2
-public_records,0.715,pc_4
-recent_account_opening,0.559,pc_2
-debt_burden,0.409,pc_4
+credit_capacity,0.579,pc_1
+loan_size,0.599,pc_5
+revolving_credit_size,0.486,pc_1
+account_count,0.364,pc_1
+revolving_utilization,0.68,pc_2
+public_records,0.714,pc_4
+recent_account_opening,0.558,pc_2
+debt_burden,0.408,pc_4

@@ -1,9 +1,9 @@
 factor,spearman_with_sub_grade
-credit_capacity,-0.145
-loan_size,0.112
-revolving_credit_size,-0.17
-account_count,-0.008
-revolving_utilization,0.332
-public_records,0.004
-recent_account_opening,0.267
+credit_capacity,-0.144
+loan_size,0.114
+revolving_credit_size,-0.171
+account_count,-0.007
+revolving_utilization,0.33
+public_records,-0.001
+recent_account_opening,0.266
 debt_burden,0.116

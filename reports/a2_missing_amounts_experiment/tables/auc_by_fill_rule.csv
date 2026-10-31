@@ -1,4 +1,4 @@
 fill_rule,auc,auc_ci_low,auc_ci_high
-median,0.6488,0.6281,0.6662
-median_plus_missing_flag,0.6489,0.6291,0.6709
-bc_util_from_revol_util_plus_flag,0.6487,0.6291,0.6688
+median,0.6489,0.6283,0.6665
+median_plus_missing_flag,0.649,0.6292,0.6709
+bc_util_from_revol_util_plus_flag,0.6488,0.6294,0.6692

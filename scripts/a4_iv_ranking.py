@@ -24,7 +24,7 @@ NUMERIC = (["annual_inc_log", "loan_amnt_log", "installment_log", "revol_bal_log
             "open_acc", "total_acc", "acc_open_past_24mths", "num_tl_op_past_12m", "mths_since_last_delinq", "emp_length_years",
             "int_rate"]
            + [f"{f}_treated" for f in ["credit_history_months", "loan_to_income", "installment_to_income", "fico_mid",
-                                       "open_acc_share", "recent_accounts_share"]] + ["revol_bal_to_income_log"])
+                                       "open_acc_share", "recent_accounts_share"]] + ["revol_bal_to_income_treated"])
 CATEGORICAL = ["job_group", "purpose_group", "home_ownership_group", "addr_state_group",
                "verification_status", "term", "grade"]
 enc = WoEEncoder(numeric=NUMERIC, categorical=CATEGORICAL).fit(d)

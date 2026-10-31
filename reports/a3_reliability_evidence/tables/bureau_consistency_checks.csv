@@ -10,3 +10,4 @@ FICO range width not 4,2
 negative value in a bureau count,0
 non-whole bureau count,0
 installment above 40% of income,0
+revolving balance above 1.5x the total current balance (after repair),0

@@ -25,7 +25,7 @@ FIELDS = (["annual_inc_log", "loan_amnt_log", "installment_log", "revol_bal_log"
            "delinq_2yrs_capped", "pub_rec_capped", "pub_rec_bankruptcies_capped", "inq_last_6mths_capped", "mort_acc_capped",
            "open_acc", "total_acc", "acc_open_past_24mths", "num_tl_op_past_12m", "mths_since_last_delinq", "emp_length_years", "int_rate"]
           + [f"{f}_treated" for f in ["credit_history_months", "loan_to_income", "installment_to_income", "fico_mid",
-                                      "open_acc_share", "recent_accounts_share"]] + ["revol_bal_to_income_log"])
+                                      "open_acc_share", "recent_accounts_share"]] + ["revol_bal_to_income_treated"])
 METHODS = {"quantile_10": ("quantile", {"n_bins": 10}), "monotonic_merge": ("monotonic", {}), "tree_6": ("tree", {})}
 
 

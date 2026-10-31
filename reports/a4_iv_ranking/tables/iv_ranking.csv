@@ -26,10 +26,10 @@ installment_log,numeric,4,0.0176,useless,input
 job_group,categorical,11,0.0159,useless,restricted
 purpose_group,categorical,6,0.0149,useless,input
 credit_history_months_treated,numeric,6,0.014,useless,input
-revol_bal_to_income_log,numeric,4,0.0134,useless,input
+revol_bal_to_income_treated,numeric,5,0.0118,useless,input
 open_acc,numeric,7,0.0112,useless,input
+revol_bal_log,numeric,6,0.0026,useless,input
 delinq_2yrs_capped,numeric,3,0.0024,useless,input
-revol_bal_log,numeric,3,0.0021,useless,input
 mths_since_last_delinq,numeric,2,0.0014,useless,input
 emp_length_years,numeric,2,0.0013,useless,input
 total_acc,numeric,3,0.0012,useless,input

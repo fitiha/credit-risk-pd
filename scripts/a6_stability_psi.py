@@ -21,7 +21,7 @@ yr = d.issue_d.dt.year
 y13, y14, y15 = d[yr == 2013], d[yr == 2014], d[yr == 2015]
 FACTORS = [c for c in d.columns if c.startswith("factor_")]
 NUMERIC = (FACTOR_FIELDS + [f"{f}_treated" for f in FEATURE_FIELDS if f not in FACTOR_FIELDS and f"{f}_treated" not in FACTOR_FIELDS]
-           + ["revol_bal_to_income_log", "mths_since_last_delinq", "emp_length_years"] + FACTORS + ["int_rate"])
+           + ["mths_since_last_delinq", "emp_length_years"] + FACTORS + ["int_rate"])
 NUMERIC = list(dict.fromkeys(NUMERIC))
 CATEGORICAL = ["term", "purpose_group", "home_ownership_group", "verification_status", "grade", "job_group", "addr_state_group"]
 kind = {**{c: "factor score" for c in FACTORS}, "int_rate": "platform score", **{c: "category" for c in CATEGORICAL}}
