@@ -22,22 +22,24 @@ Known limits to be reported with the results: WoE values inside the contract wer
 slightly optimistic (about 0.008 AUC, measured); 60-month loans from mid-2014 on are over-stated in the label (in-progress bias), so calibration
 and policy results are reported separately for 36 and 60 months.
 
-## 3. Inputs and the platform's own score
-Inputs are the fields the contract marks as `input` (reliability high or medium). Left out: `int_rate`, `grade`, `sub_grade` (the platform's own risk
-model; the model must not just copy it and the comparison "beats grade alone" must stay meaningful, and `int_rate` also drifts, PSI 0.19 and 0.16),
-job group and location (restricted pending the fairness review), and every servicing field. Grade is used as the benchmark and as a test variant.
-Three input sets are compared in the ablation: raw treated fields and features, the eight factor scores, and both.
+## 3. Inputs and the platform's own score (revised, see section 11)
+Inputs are the fields the contract marks as `input` (reliability high or medium) **plus the platform's sub-grade** (as a rank, A1 to G5). The model therefore builds on the existing risk system and adds what it misses,
+which is the usual way to improve an incumbent score. Left out: `int_rate` (it adds nothing once the sub-grade is in: tuning-fold AUC 0.7098 against 0.7100, and it drifts, PSI 0.19 then 0.16), the grade letter (the same information
+as the sub-grade), job group and location (restricted pending the fairness review), and every servicing field.
+Three comparison points are kept: **grade plus term** (the fair benchmark: term is information the grade does not contain), the **independent scorecard** (our fields only), and the **selected model** (our fields plus the sub-grade).
+The ablation of the data scientist's outputs (raw fields, factor scores, both) is run with the sub-grade present in every set.
 
 ## 4. Models
-1. **Baseline A, grade alone:** logistic regression on the sub-grade rank. The bar to beat.
-2. **Baseline B, WoE scorecard:** logistic regression on the contract's WoE columns of the input fields, with an L2 penalty tuned on the time folds. Interpretable by construction (points per bin).
-3. **Challenger, gradient boosting (LightGBM):** on the treated fields, features and, in the ablation, factor scores. Monotone constraints only where credit logic and the data agree
+1. **Baseline A, the old system:** logistic regression on the sub-grade rank and the loan term. The bar to beat.
+2. **Baseline B, independent WoE scorecard:** logistic regression on the contract's WoE columns of our input fields, weights forced to point in the safe direction, L2 penalty tuned on the time folds. Interpretable by construction (points per bin).
+3. **Selected, WoE scorecard plus the sub-grade:** the same scorecard with the sub-grade rank as one more input.
+4. **Challenger, gradient boosting (LightGBM)** with the sub-grade as an input: on the treated fields, features and, in the ablation, factor scores. Monotone constraints only where credit logic and the data agree
    (PD rises with `dti`, utilisation, `loan_to_income`, `installment_to_income`, inquiries, delinquencies, public records, loan size and the 60-month term;
    PD falls with FICO, income, credit limits and credit history length). No constraint on counts of accounts, whose effect is mixed.
    A constraint is kept only if it costs less than 0.002 AUC on the time folds.
-4. **Class imbalance (18.7% defaults):** no resampling, because it distorts PD. Class weighting is compared in tuning; the choice is made on Brier score and AUC after calibration.
-5. **Calibration:** isotonic or Platt, whichever has the lower Brier score on the out-of-fold predictions, checked on a reliability plot and by term. (Changed during the build, see section 10: calibrated separately for each term.)
-6. **Tuning:** a small fixed grid on the two time folds, seeds fixed, every run appended to `reports/experiments.csv`.
+5. **Class imbalance (18.7% defaults):** no resampling, because it distorts PD. Class weighting is compared in tuning; the choice is made on Brier score and AUC after calibration.
+6. **Calibration:** isotonic or Platt, whichever has the lower Brier score on the out-of-fold predictions, checked on a reliability plot and by term. (Changed during the build, see section 10: calibrated separately for each term.)
+7. **Tuning:** a small fixed grid on the two time folds, seeds fixed, every run appended to `reports/experiments.csv`.
 
 ## 5. Metrics
 Ranking: ROC-AUC, Gini (2 x AUC - 1) and KS. Probability quality: Brier score, reliability plot and calibration by term, by quarter and by decile (a PD is only useful for thresholds if it is
@@ -78,3 +80,16 @@ Scoring one application must take under 100 ms: the transform takes about 20 ms,
 - **Thresholds** were kept at the profit-based 6.25% and 12.5%: the profit-maximising decline threshold on 2015 H1 (13.5%) is close, and the profit curve is flat there.
 - **Not built, as planned or by choice:** the experiment log is a CSV, not MLflow; no production API or Docker (out of scope); no test of disparate impact because the data has no demographic fields.
 - **Latency** is 34 ms at the median and 36 ms at the 95th percentile for the whole call (the contract transform is 20 ms of it), inside the 100 ms budget.
+
+## 11. Revision 2: building on the sub-grade (decided before any code change)
+**Why.** The first version kept the platform's grade out of the model. Evaluated fairly, that model only matches the old system: on 2015 loans AUC 0.719 against 0.722 for grade plus term (difference not significant), and a policy driven by the grade earned slightly more. The aim is a model that
+improves on the old system, and an independent model cannot beat a model that sees the same facts.
+**Evidence, from the two time-ordered tuning folds only (no 2015), against the benchmark grade plus term (mean AUC 0.702):** our independent scorecard 0.699 (-0.001 and -0.006); scorecard plus sub-grade 0.710 (+0.010 and +0.006, same direction in both folds, each
+within noise because the folds hold 4,000 and 5,000 loans); adding the interest rate changes nothing (0.710); boosting plus grade and rate is inconsistent between folds (+0.014, then -0.001) and does not beat the scorecard. The later 2015 result for the same model (+0.011 over the grade, interval +0.005 to +0.016) has been seen and is
+reported, but the choice rests on the tuning folds.
+**Decision (taken by the project owner):** use the sub-grade as an input, not the interest rate.
+**Selection rule, fixed now:** the selected model is the scorecard plus sub-grade unless a boosted model beats it by at least 0.005 mean AUC on the tuning folds and in both folds; results on 2015 are reported and never used to choose.
+**Risks and how they are handled.** (1) The model now depends on the platform's grading: if the platform changes its grading, the sub-grade's meaning shifts. Monitoring: PSI of the sub-grade mix, and observed default rate by grade band against its history, at every release; alert at PSI 0.10 (investigate) and 0.25 (act).
+(2) Fallback: the independent scorecard is trained and saved with the same pipeline and can be switched on by changing one setting, so the decision is reversible without retraining. (3) The claim is modest: about +0.01 AUC, and any further claim needs fresh data. (4) The comparison with the old system is always made against grade plus term, never against the grade alone.
+**What this changes in the build:** the input sets and the scorecard columns gain the sub-grade rank; the benchmark becomes grade plus term; the model selection, evaluation, reason codes (the sub-grade can be a reason: "platform grade"), the model card and the demo are regenerated; the policy is re-checked against the old system's.
+
