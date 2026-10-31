@@ -266,7 +266,7 @@ sample (43% of fields); with about 5,000 later loans, neighbouring bins differ b
 
 ## Information value ranking and the "too good to be true" check
 
-`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 8 categorical fields (bins and
+`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 7 categorical fields (bins and
 groups as decided above). Output: `reports/a4_iv_ranking/`.
 
 | Field | IV | Reading |
@@ -275,7 +275,7 @@ groups as decided above). Output: `reports/a4_iv_ranking/`.
 | `term` | 0.20 | medium |
 | `fico_mid`, `loan_to_income` | 0.11, 0.11 | medium: the strongest fields the model builds itself |
 | `recent_accounts_share`, `acc_open_past_24mths`, `installment_to_income`, `dti`, `num_tl_op_past_12m` | 0.06 to 0.09 | weak |
-| most other fields | under 0.05 | weak or useless; 17 of 38 fields are below 0.02 |
+| most other fields | under 0.05 | weak or useless; 16 of 37 fields are below 0.02 |
 
 **The only IV near the suspicious zone is the platform's own score, and it is not a leak.** `int_rate` has
 11 bins with a smooth, one-directional pattern, from 3.6% default in the lowest-rate bin (WoE +1.71) to 37.1% in
@@ -474,3 +474,27 @@ accepted ones. Declined applicants' outcomes cannot be observed, so the remedies
 monitor the applicant mix, and, if the platform keeps declined applications, apply reject-inference methods or run small controlled approvals
 of borderline applicants to learn what happens outside the accepted region. The label has a second selection effect, covered in the target analysis:
 unfinished loans were removed, which inflates recent 60-month default rates.
+
+## Review before building the contract and the model
+
+An adversarial review of the work so far, with what each finding changed.
+- **The holdout `revol_util` unit error** (issue 36) was missed by the first holdout check, which only looked for the errors found
+  in training. It would have corrupted every holdout score silently. Fixed with an explicit conversion at load time and a fail-fast
+  guard in the transformer. Lesson applied: a new file is compared with earlier years field by field, not only checked for known errors.
+- **Tuning inside the training years is optimistic.** WoE values are fitted on all pre-2015 labels (as the contract requires), so a
+  validation fold inside those years has already been seen by the WoE: AUC 0.719 against 0.711 when the WoE is fitted on the training
+  part only. The clean figure is the 2015 validation (0.716 for a quick WoE logistic). Hyperparameter tuning on time folds is therefore
+  slightly optimistic and is reported as such; the final metrics come from 2015 only.
+- **Thresholds must not be tuned on the data they are reported on.** The approve and decline cut-offs will be chosen on the first half
+  of 2015 (or 2014 H2) and reported on the rest, so the policy results are not flattered.
+- **60-month loans in 2015 are over-stated** (in-progress bias), so calibration and approval-rate results are reported separately by term.
+- **`issue_d` means the application date when scoring.** Credit history length is measured from it. The spec asks for a date, and the demo
+  form fills in today's date; the job-title era rule and everything else that reads it behave correctly for dates after 2013.
+- **Valid ranges in the spec must come from plausibility, not from the fit window.** The 2016 holdout has `dti` up to 127 and income
+  to $7M, which the caps handle; input validation must not reject them, and the contract test checks that the holdout passes.
+- **The platform's own `int_rate` keeps drifting** (PSI 0.19 for 2014 to 2015, 0.16 for 2015 to 2016), confirming that it should stay a
+  benchmark and not an input.
+- **Scoring time:** the transformer takes about 24 to 40 ms for one application (cleaning and amount treatment are the slowest steps),
+  which leaves about 60 ms of the 100 ms budget for the model and reason codes; it will be measured end to end.
+- **Saving and reloading the fitted transformer** gives identical output (checked), so the handoff file is reliable.
+

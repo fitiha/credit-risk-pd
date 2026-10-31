@@ -48,7 +48,7 @@ Of the 38 rated fields known at application time:
 | `open_acc` | credit_bureau | high | model input | Bureau count; never above total_acc. |
 | `total_acc` | credit_bureau | high | model input | Bureau count; no errors found; never below open_acc. |
 | `revol_bal` | credit_bureau | high | model input | Bureau amount; no errors found; heavy tail is genuine and capped; a few real zeros. |
-| `revol_util` | credit_bureau | medium | model input | 295 negative values (1%) were sign flips, proven against balance and limit; 12 missing (5 with no revolving limit, so undefined). |
+| `revol_util` | credit_bureau | medium | model input | 295 negative values (1%) were sign flips, proven against balance and limit; 12 missing (5 with no revolving limit, so undefined). The 2016 holdout stores it as a fraction (0.91) in every row; it is converted to percent on loading and batches in the wrong unit are rejected. |
 | `bc_util` | credit_bureau | medium | model input | 290 negative values (1%) set to missing because the sign flip cannot be proven; 1% more missing in the bureau file, mostly for borrowers with few open accounts (8.6% missing at 3 or fewer open accounts vs 0.4% above 10), with a weak, unproven link to higher default (21.2% vs 17.2%, p = 0.19). |
 | `tot_cur_bal` | credit_bureau | high | model input | Bureau amount; no errors found; heavy tail capped. |
 | `avg_cur_bal` | credit_bureau | high | model input | Bureau amount; no errors found; heavy tail capped. |

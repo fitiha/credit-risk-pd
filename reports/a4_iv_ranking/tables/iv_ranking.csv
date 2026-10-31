@@ -36,4 +36,3 @@ total_acc,numeric,3,0.0012,useless,input
 pub_rec_capped,numeric,2,0.0004,useless,input
 pub_rec_bankruptcies_capped,numeric,2,0.0001,useless,input
 mort_acc_capped,numeric,1,0.0,useless,input
-application_type_group,categorical,1,0.0,useless,input
