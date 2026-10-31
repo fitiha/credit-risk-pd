@@ -48,6 +48,15 @@ class AmountTreater(BaseEstimator, TransformerMixin):
             d[f"{f}_is_zero"] = d[f] == 0  # NaN == 0 is False: missing is not zero
         return d
 
+    def spec_entries(self):
+        """Per-field rule for data_spec.json, so scoring applies the same limits."""
+        return {
+            f: {"cap_low": lo, "cap_high": hi, "log1p": True, "zero_indicator": f in self.zero_fields_,
+                "cleaning": f"capped at p{self.lower_q * 100:g} = {lo:,.0f} and p{self.upper_q * 100:g} = {hi:,.0f}, then log(1 + x)",
+                "missing_strategy": "left missing (none in the fit window)"}
+            for f, (lo, hi) in self.caps_.items()
+        }
+
 
 RATIO_FIELDS = ["dti", "revol_util", "bc_util"]
 COUNT_FIELDS = ["delinq_2yrs", "pub_rec", "pub_rec_bankruptcies", "inq_last_6mths", "mort_acc"]
@@ -86,6 +95,15 @@ class RatioTreater(BaseEstimator, TransformerMixin):
             d[f"{f}_missing"] = d[f].isna()
         return d
 
+    def spec_entries(self):
+        return {
+            f: {"cap_low": lo, "cap_high": hi, "fill_value": self.fill_[f], "missing_indicator": f in self.flag_fields_,
+                "cleaning": f"capped at p{self.lower_q * 100:g} = {lo:,.1f} and p{self.upper_q * 100:g} = {hi:,.1f}",
+                "missing_strategy": f"median of the fit window ({self.fill_[f]:,.1f})"
+                                    + (" plus a missing indicator" if f in self.flag_fields_ else "")}
+            for f, (lo, hi) in self.caps_.items()
+        }
+
 
 class CountTreater(BaseEstimator, TransformerMixin):
     """Cap long-tailed count fields at their 99.5th percentile (zeros stay zero)."""
@@ -105,3 +123,7 @@ class CountTreater(BaseEstimator, TransformerMixin):
         for f, hi in self.caps_.items():
             d[f"{f}_capped"] = d[f].clip(upper=hi)
         return d
+
+    def spec_entries(self):
+        return {f: {"cap_high": hi, "cleaning": f"capped at p{self.upper_q * 100:g} = {hi:g}; zeros stay zero"}
+                for f, hi in self.caps_.items()}

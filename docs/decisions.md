@@ -27,7 +27,7 @@ robust z-score (median and MAD), winsorizing at 1%/99% and at 0.5%/99.5%, log(1 
 | Finding | Result |
 |---|---|
 | Shape after treatment | Any method using the log gives |skewness| ≤ 0.7 on every field. Clipping or winsorizing without the log leaves 1.4 to 4.5 on several fields. |
-| Rows changed | 0.4% to 1% of rows for the 0.5%/99.5% cap; up to 10% for IQR fences and the robust z-score, which cuts genuine values. |
+| Rows changed | 0.4% to 1% of rows for the 0.5%/99.5% cap; up to 6% for IQR fences and 10% for the robust z-score, which cut genuine values. |
 | Predictive power | A logistic model on later, unseen loans scores AUC 0.64 untreated and 0.65 with the log methods. The 95% intervals (±0.02) overlap, so predictive power cannot separate the methods. Using the money fields at all adds about 0.055 AUC (0.586 without them). |
 
 **Choice: cap each field at its 0.5th and 99.5th percentile, then take log(1 + value).**
@@ -109,7 +109,7 @@ Source: `reports/a2_financial_values_profile/tables/`.
 
 For the six heavy-tailed money fields the rule fails in the same way: the tail inflates the std, the
 limit is one-sided in practice (the lower limit is negative), and it flags 1% to 2% of genuine borrowers
-while the robust rules flag 3% to 6%, so no single threshold is trustworthy.
+while the IQR fences flag 3% to 6% and the robust z-score 5% to 10%, so no single threshold is trustworthy.
 
 ## Errors versus genuine extremes, field by field
 
