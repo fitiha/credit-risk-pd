@@ -1,6 +1,6 @@
 """A2: default rate over time and by term, and the in-progress-loan bias.
 
-Writes reports/target_analysis/{figures,tables}.
+Writes reports/a1_target_analysis/{figures,tables}.
 """
 import matplotlib
 matplotlib.use("Agg")
@@ -13,7 +13,7 @@ from credit_risk.reporting import fresh_dirs
 from credit_risk.stats import rate_table
 
 SNAPSHOT = pd.Timestamp("2019-03-01")  # servicing data snapshot date (brief)
-FIG, TAB = fresh_dirs("target_analysis")
+FIG, TAB = fresh_dirs("a1_target_analysis")
 
 raw = load_applications()
 d = Cleaner().fit(raw).transform(raw)
@@ -49,4 +49,29 @@ ax.set_ylim(0, 42)
 ax.legend(loc="upper left")
 fig.tight_layout()
 fig.savefig(FIG / "default_rate_by_term_and_half_year.png", dpi=150)
+# monthly view: default rate per term with 95% CI, and how many loans each month rests on
+by_month = rate_table(d, ["month", "term"])
+months = sorted(d.month.unique())
+mx = {m: i for i, m in enumerate(months)}
+fig, (top, bottom) = plt.subplots(2, 1, figsize=(9, 6), sharex=True,
+                                  gridspec_kw={"height_ratios": [3, 1]})
+for term, color in [(36, "#2a6f97"), (60, "#c1440e")]:
+    t_ = by_month[by_month.term == term]
+    xs = t_.month.map(mx)
+    top.plot(xs, t_.rate * 100, marker="o", ms=3, color=color, label=f"{term}-month loans")
+    top.fill_between(xs, t_.ci_low * 100, t_.ci_high * 100, color=color, alpha=0.15)
+start = mx["2014-07"] - 0.5
+top.axvspan(start, len(months) - 0.5, color="grey", alpha=0.12)
+top.set_ylabel("Default rate (%)")
+top.set_title("Default rate by issue month and loan term (bands = 95% confidence interval)", fontsize=10)
+top.legend(loc="upper left")
+counts = d.groupby("month").size()
+bottom.bar([mx[m] for m in counts.index], counts.values, color="#888888")
+bottom.set_ylabel("Loans issued")
+bottom.set_xlabel("Loan issue month")
+bottom.set_xticks(range(0, len(months), 3), months[::3], rotation=45, ha="right")
+fig.tight_layout()
+fig.savefig(FIG / "default_rate_by_month_and_term.png", dpi=150)
+plt.close(fig)
+
 print(by_half.round(3).to_string(index=False))

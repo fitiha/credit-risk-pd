@@ -1,14 +1,14 @@
 # A2. Target analysis: `defaulted`
 
 Data: 30,000 unique loans issued Jan 2013 - Dec 2015, after cleaning (see `issue_log.md`).
-Reproduce: `uv run python scripts/target_analysis.py` (output in `reports/target_analysis/`).
+Reproduce: `uv run python scripts/a1_target_analysis.py` (output in `reports/a1_target_analysis/`).
 
 ## Class balance
 5,617 defaults out of 30,000 loans: **18.7%**, about 1 default for every 4.3 repaid loans.
 The classes are imbalanced but not extreme, so no resampling is planned (see DESIGN.md).
 
 ## By loan term and by year (95% confidence intervals)
-Monthly rates are in `reports/target_analysis/tables/default_by_month.csv` (36 months, 263-1,794 loans each, so monthly intervals are wide: up to 8 points). The conclusions are drawn from half-years, where intervals are narrow.
+Monthly rates are in `reports/a1_target_analysis/tables/default_by_month.csv` (36 months, 263-1,794 loans each, so monthly intervals are wide: up to 8 points). The conclusions are drawn from half-years, where intervals are narrow.
 
 | Group | Loans | Default rate | 95% CI |
 |---|---|---|---|

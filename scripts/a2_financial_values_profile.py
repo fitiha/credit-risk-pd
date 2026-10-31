@@ -1,6 +1,6 @@
 """A3: distribution profile of every financial field on loans up to the fit cutoff.
 
-Writes reports/financial_values_profile/tables/{field_profile,outlier_rule_counts}.csv
+Writes reports/a2_financial_values_profile/tables/{field_profile,outlier_rule_counts}.csv
 and one chart per field (linear and log scale) in .../figures/distribution_<field>.png.
 """
 import matplotlib
@@ -18,7 +18,7 @@ AMOUNTS = ["annual_inc", "loan_amnt", "installment", "revol_bal", "tot_cur_bal",
            "avg_cur_bal", "total_rev_hi_lim", "tot_hi_cred_lim"]
 RATIOS = ["dti", "revol_util", "bc_util"]
 COUNTS = ["delinq_2yrs", "pub_rec", "pub_rec_bankruptcies", "inq_last_6mths", "mort_acc"]
-FIG, TAB = fresh_dirs("financial_values_profile")
+FIG, TAB = fresh_dirs("a2_financial_values_profile")
 
 raw = load_applications()
 d = Cleaner().fit(raw).transform(raw)
