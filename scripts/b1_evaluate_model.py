@@ -66,7 +66,7 @@ for term, color in [(36, "#2a6f97"), (60, "#c1440e")]:
 ax[0].plot([0, 60], [0, 60], color="grey", ls="--", lw=1); ax[0].set_xlabel("Predicted default rate (%)"); ax[0].set_ylabel("Observed default rate (%)"); ax[0].legend(fontsize=8)
 ax[0].set_title(f"Calibration on 2015 loans ({selected})", fontsize=10)
 by = v15.groupby("quarter").apply(lambda g: pd.Series({"predicted": g[sel].mean() * 100, "observed": g.defaulted.mean() * 100}), include_groups=False)
-by.plot.bar(ax=ax[1], color=["#2a6f97", "#c1440e"], rot=0); ax[1].set_ylabel("Default rate (%)"); ax[1].set_title("Predicted against observed by quarter", fontsize=10)
+by.plot.bar(ax=ax[1], color=["#2a6f97", "#c1440e"], rot=0); ax[1].set_ylabel("Default rate (%)"); ax[1].set_title("Predicted against observed by quarter", fontsize=10); ax[1].set_ylim(0, by.to_numpy().max() * 1.3); ax[1].legend(loc="upper center", ncol=2, fontsize=8)
 fig.tight_layout(); fig.savefig(FIG / "calibration_2015.png", dpi=140); plt.close(fig)
 
 # 4. decision policy: thresholds from the profit assumptions; empirical check on H1; results on H2

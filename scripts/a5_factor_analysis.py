@@ -16,6 +16,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 from credit_risk.factor_fields import FACTOR_FIELDS
+from credit_risk.factors import name_factors
 from credit_risk.factor_tools import bartlett_sphericity, kmo, parallel_analysis, promax, tucker_congruence
 from credit_risk.io import FIT_CUTOFF, load_applications
 from credit_risk.reporting import fresh_dirs
@@ -98,8 +99,9 @@ ax[1].axvline(0.6, color="grey", ls=":", lw=1); ax[1].tick_params(axis="y", labe
 ax[1].set_title(f"Suitability: overall KMO {kmo_all:.2f}", fontsize=10)
 fig.tight_layout(); fig.savefig(FIG / "parallel_analysis_and_kmo.png", dpi=140); plt.close(fig)
 fig, ax = plt.subplots(figsize=(7, 7.5))
+factor_names = name_factors(L)
 im = ax.imshow(L, cmap="RdBu_r", vmin=-1, vmax=1, aspect="auto")
-ax.set_xticks(range(K), L.columns); ax.set_yticks(range(p), L.index, fontsize=7)
+ax.set_xticks(range(K), [f"{c}: {factor_names[c] or 'unnamed'}" for c in L.columns], rotation=40, ha="right", fontsize=7); ax.set_yticks(range(p), L.index, fontsize=7)
 for i in range(p):
     for j in range(K):
         if abs(L.iloc[i, j]) >= 0.3:
