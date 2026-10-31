@@ -176,3 +176,32 @@ corrupted get the median history (179 months) and keep the `earliest_cr_line_inv
 Everything is fitted on loans up to 2014-12-31; a test checks that 2015 loans do not change the fit.
 
 **Dropped:** `credit_limit_to_income` (AUC 0.53, adds little over the credit-limit and income fields already used).
+
+## Job titles (`emp_title`)
+
+**Problem.** After cleaning, the fit window has 13,549 titles with 8,157 distinct values; 7,082 appear once. The
+20, 50 and 200 most common titles cover only 13%, 19% and 30% of loans, so a code per title is unusable.
+
+**Compared** (`scripts/a4_emp_title_grouping.py`): keyword groups, the N most common titles (20, 50, 200), and
+only a missing flag. Each is judged by IV on the loans it was learned from (up to mid-2014) and on later loans
+(second half of 2014) using the WoE learned earlier, because more groups always look better in-sample.
+
+| Option | Groups | Smallest group | IV learned on | IV on later loans |
+|---|---|---|---|---|
+| Keyword groups | 10 | 439 loans | 0.0145 | 0.0153 |
+| Top 20 titles | 22 | 23 | 0.0187 | 0.0208 |
+| Top 50 titles | 52 | 11 | 0.0465 | 0.0287 |
+| Top 200 titles | 202 | 4 | 0.1195 | 0.0381 |
+| Missing flag only | 2 | 575 | 0.0012 | 0.0006 |
+
+**Choice: keyword groups.** Eight occupation groups from keyword rules (first match wins, order in
+`src/credit_risk/categorical.py`), plus `other_job` and `missing`. They are stable between training and later
+loans, every group is large, and each can be explained to a credit officer. The top-200 option is the textbook
+overfit: IV of 0.12 on its own training loans falls to 0.04 on later ones, with groups of 4 loans.
+
+**What job title is worth.** Little. IV is about 0.015, which is below the 0.02 line for a useful field.
+Default rates run from 13.9% (professional and technical) to 19.9% (trades, transport and labour); the
+spread is real but small. The group stays in the contract because it is cheap and explainable, but we
+should not expect it to carry the model.
+The 32% in `other_job` is a long tail of company names and one-off titles (Wells Fargo, Walmart, UPS).
+Evidence: `reports/a4_emp_title_grouping/`.
