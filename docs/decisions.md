@@ -212,3 +212,30 @@ those fields are absent. Its predictive value is small (IV about 0.015), so the 
 zero. The grouping stays in the data contract (the brief asks for it) and is available as a test variant; the
 fairness review (A7) discusses it together with `zip_code` and `addr_state`. `emp_length` is flagged in the same
 review, since length of employment tends to rise with age.
+
+## Rare levels of `purpose`, `home_ownership` and `addr_state`; employment length
+
+**Minimum group size: 1% of fit-window loans (about 144 of 14,373).** Levels below it merge into one
+`other_<field>` level, and levels never seen when fitting (a new state, for example) map there too.
+Compared at 0%, 0.25%, 0.5%, 1% and 2% (`scripts/a4_rare_level_merging.py`; IV learned on loans to mid-2014 and
+checked on later loans):
+
+| Field | Levels | At 1%: groups left, loans in other, smallest group | IV learned on / on later loans |
+|---|---|---|---|
+| `purpose` | 13 | 7 groups, 3.4%, 96 loans | 0.0253 / 0.0152 (best of the thresholds) |
+| `home_ownership` | 3 | 3 groups, nothing merged, 845 loans | 0.0237 / 0.0197 |
+| `addr_state` | 47 | 32 groups, 6.0%, 99 loans | 0.0301 / 0.0030 |
+
+Why 1%: at about 100 loans a group's default rate carries an uncertainty of roughly ±4 points, and below that
+the WoE values wobble. A threshold of 2% starts merging real categories (medical, small business) and puts 25%
+of state loans into `other`; 0.5% leaves groups as small as 50 loans.
+
+**State is mostly noise.** Its IV looks like 0.03 on the loans it was learned from but falls to 0.003 to 0.010
+on later loans at every threshold, below the 0.02 line for a useful field. It also carries the location proxy
+risk, so it stays restricted (see the fairness review). Merging is applied because the brief asks for it and the
+spec needs it.
+
+**Employment length** is ordered 0 (under 1 year) to 10 (10+ years) with missing as its own level.
+Default rates are flat at 17% to 19% for 1 to 9 years, lower at 10+ years (15.5%), and higher for under 1 year
+(19.7%) and missing (19.5%). It is not a clean staircase, and its IV is 0.012, so it is binned into fewer
+steadier groups in the WoE step. Evidence: `reports/a4_rare_level_merging/`.

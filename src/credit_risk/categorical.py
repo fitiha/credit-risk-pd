@@ -1,6 +1,8 @@
 """Grouping of categorical fields before WoE."""
 import re
 
+import numpy as np
+
 import pandas as pd
 
 # Job-title groups. A title gets the first group whose keywords it contains, so the order matters:
@@ -31,3 +33,45 @@ def job_group(title):
 
 def group_job_titles(titles):
     return pd.Series(titles).map(job_group)
+
+
+class RareLevelMerger:
+    """Merge levels with fewer than `min_share` of the fit-window loans into one `other_<field>` level.
+
+    Levels that were never seen when fitting (a new state, for example) also map to `other_<field>`
+    when scoring. Missing values stay missing.
+    """
+
+    def __init__(self, field, min_share=0.01):
+        self.field = field
+        self.min_share = min_share
+
+    @property
+    def other_label(self):
+        return f"other_{self.field}"
+
+    def fit(self, values):
+        values = pd.Series(values).dropna()
+        counts = values.value_counts()
+        self.min_loans_ = int(np.ceil(self.min_share * len(pd.Series(values))))
+        self.kept_ = sorted(counts[counts >= self.min_loans_].index)
+        self.merged_ = sorted(set(counts.index) - set(self.kept_))
+        return self
+
+    def transform(self, values):
+        values = pd.Series(values)
+        out = values.where(values.isin(self.kept_), self.other_label)
+        return out.where(values.notna())
+
+    def spec_entry(self):
+        return {"min_share": self.min_share, "min_loans_in_fit_window": self.min_loans_, "kept_levels": self.kept_,
+                "merged_levels": self.merged_, "other_label": self.other_label}
+
+
+EMP_LENGTH_ORDER = {"< 1 year": 0, "1 year": 1, "2 years": 2, "3 years": 3, "4 years": 4, "5 years": 5, "6 years": 6,
+                    "7 years": 7, "8 years": 8, "9 years": 9, "10+ years": 10}
+
+
+def order_emp_length(values):
+    """Employment length as a number from 0 (under 1 year) to 10 (10+ years); missing stays missing."""
+    return pd.Series(values).map(EMP_LENGTH_ORDER)
