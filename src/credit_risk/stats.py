@@ -18,3 +18,40 @@ def rate_table(df, by, target="defaulted"):
     g["rate"] = g.defaults / g.loans
     g["ci_low"], g["ci_high"] = wilson_interval(g.defaults, g.loans)
     return g.reset_index()
+
+
+PERCENTILES = (0.01, 0.05, 0.25, 0.50, 0.75, 0.95, 0.99)
+
+
+def describe_field(x):
+    """Distribution summary of one numeric column (missing values ignored)."""
+    x = pd.Series(x).dropna()
+    q = x.quantile(PERCENTILES)
+    return {
+        "n": len(x), "mean": x.mean(), "median": x.median(), "std": x.std(),
+        "iqr": q[0.75] - q[0.25], "skew": x.skew(),
+        **{f"p{int(p * 100)}": q[p] for p in PERCENTILES},
+        "min": x.min(), "max": x.max(), "zeros_pct": 100 * (x == 0).mean(),
+    }
+
+
+def outlier_counts(x):
+    """How many values three common rules flag as outliers (low, high)."""
+    x = pd.Series(x).dropna()
+    m, s = x.mean(), x.std()
+    q1, q3 = x.quantile(0.25), x.quantile(0.75)
+    iqr = q3 - q1
+    med = x.median()
+    mad = 1.4826 * (x - med).abs().median()
+    rules = {
+        "mean_3std": (m - 3 * s, m + 3 * s),
+        "iqr_fence": (q1 - 1.5 * iqr, q3 + 1.5 * iqr),
+        "robust_z": (med - 3 * mad, med + 3 * mad),
+    }
+    out = {}
+    for name, (lo, hi) in rules.items():
+        out[f"{name}_low"] = int((x < lo).sum())
+        out[f"{name}_high"] = int((x > hi).sum())
+        out[f"{name}_upper_limit"] = hi
+        out[f"{name}_lower_limit"] = lo
+    return out
