@@ -46,7 +46,7 @@ load.round(3).to_csv(TAB / "loadings.csv", index_label="field")
 
 # effect of the outlier treatment: same fields, cleaned but not capped, logged or filled-by-rule
 UNTREATED = {"annual_inc_log": "annual_inc", "loan_amnt_log": "loan_amnt", "installment_log": "installment", "revol_bal_log": "revol_bal",
-             "tot_cur_bal_log": "tot_cur_bal", "avg_cur_bal_log": "avg_cur_bal", "total_rev_hi_lim_log": "total_rev_hi_lim",
+             "avg_cur_bal_log": "avg_cur_bal", "total_rev_hi_lim_log": "total_rev_hi_lim",
              "tot_hi_cred_lim_log": "tot_hi_cred_lim", "dti_treated": "dti", "revol_util_treated": "revol_util", "bc_util_treated": "bc_util",
              "delinq_2yrs_capped": "delinq_2yrs", "pub_rec_capped": "pub_rec", "pub_rec_bankruptcies_capped": "pub_rec_bankruptcies",
              "inq_last_6mths_capped": "inq_last_6mths", "mort_acc_capped": "mort_acc", "fico_mid_treated": "fico_mid",

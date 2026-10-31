@@ -16,13 +16,14 @@ from credit_risk.io import FIT_CUTOFF
 
 # What each named factor is made of. A fitted factor receives a name only if it loads strongly on these fields.
 SIGNATURES = {
-    "credit_capacity": ["avg_cur_bal_log", "tot_cur_bal_log", "tot_hi_cred_lim_log"],
+    "credit_capacity": ["avg_cur_bal_log", "tot_hi_cred_lim_log"],
     "loan_size": ["installment_log", "loan_amnt_log"],
     "revolving_credit_size": ["total_rev_hi_lim_log", "revol_bal_log"],
     "account_count": ["open_acc", "total_acc"],
     "revolving_utilization": ["revol_util_treated", "bc_util_treated"],
     "public_records": ["pub_rec_capped", "pub_rec_bankruptcies_capped"],
     "recent_account_opening": ["num_tl_op_past_12m", "acc_open_past_24mths"],
+    "debt_burden": ["dti_treated", "annual_inc_log"],
 }
 MIN_MEAN_LOADING = 0.5
 
@@ -41,7 +42,7 @@ def name_factors(loadings, signatures=SIGNATURES, min_mean_loading=MIN_MEAN_LOAD
 class FactorModel(BaseEstimator, TransformerMixin):
     """Adds `pc_1..pc_k` (PCA components) and `factor_<name>` (factor scores)."""
 
-    def __init__(self, fields=None, n_components=7, n_factors=7, signatures=None):
+    def __init__(self, fields=None, n_components=7, n_factors=8, signatures=None):
         self.fields = fields
         self.n_components = n_components
         self.n_factors = n_factors
