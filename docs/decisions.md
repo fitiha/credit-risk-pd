@@ -26,7 +26,7 @@ robust z-score (median and MAD), winsorizing at 1%/99% and at 0.5%/99.5%, log(1 
 
 | Finding | Result |
 |---|---|
-| Shape after treatment | Any method using the log gives |skewness| ≤ 0.7 on every field. Clipping or winsorizing without the log leaves 1.4 to 4.5 on several fields. |
+| Shape after treatment | Log with a cap gives |skewness| ≤ 0.8 on every field (log alone leaves `revol_bal` at -2.5). Clipping or winsorizing without the log leaves 1.4 to 3.4 on several fields. |
 | Rows changed | 0.4% to 1% of rows for the 0.5%/99.5% cap; up to 6% for IQR fences and 10% for the robust z-score, which cut genuine values. |
 | Predictive power | A logistic model on later, unseen loans scores AUC 0.64 untreated and 0.65 with the log methods. The 95% intervals (±0.02) overlap, so predictive power cannot separate the methods. Using the money fields at all adds about 0.055 AUC (0.586 without them). |
 
@@ -76,7 +76,7 @@ loans. Evidence: `reports/a2_treatment_effect/tables/count_caps.csv`.
 |---|---|
 | How much is missing | `revol_util`: 4 loans (2 have no revolving limit, so the ratio is undefined). `bc_util`: 151 missing in the bureau file plus 138 set to missing after the sign-flip repair (issue 14). |
 | Link to default | Loans with a missing `bc_util` default at 21% (bureau gap) and 23% (sign repair) against 17% for the rest. With 151 and 138 loans the difference is not clearly more than chance (p = 0.19 and 0.07). |
-| Fill rule | Median, median plus a missing indicator, and a regression estimate from `revol_util` all score the same AUC (0.6488 to 0.6489). The extra complexity of the regression does not pay. |
+| Fill rule | Median, median plus a missing indicator, and a regression estimate from `revol_util` all score the same AUC (0.6488 to 0.6490). The extra complexity of the regression does not pay. |
 
 **Choice: fill with the median of the capped fit-window values, and add a `<field>_missing`
 indicator when at least 1% of fit-window loans are missing.** That applies to `bc_util` only. The
@@ -98,7 +98,7 @@ Source: `reports/a2_financial_values_profile/tables/`.
 | `annual_inc` | 63.3 | $305,292 vs $250,000 | 0.4% | No | One $7.5M income inflates the std ($77k, against an IQR of $45k), pushing the limit above the 99th percentile. The lower limit is −$156,543 and can never trigger. The IQR and robust rules flag 616 and 654 loans, the 3-std rule 57. |
 | `loan_amnt` | 0.7 | $39,620 vs $35,000 | 0% | Not needed | Bounded by the product maximum; no tail. The limit lies above the largest value. |
 | `installment` | 0.9 | $1,184 vs $1,196 | 1.2% | Works by accident | Bounded by loan size. The limit lands near the 99th percentile only because the field is bounded; it is a function of amount, rate and term, so it has no independent outliers. |
-| `revol_bal` | 12.8 | $100,676 vs $115,303 | 1.2% | No | A $1.18M maximum inflates the std ($27,647). The limit falls below the 99th percentile, so it flags ordinary heavy-tail balances. |
+| `revol_bal` | 8.3 | $77,208 vs $88,339 | 1.3% | No | A $624,356 maximum still inflates the std ($20,230). The limit falls below the 99th percentile, so it flags ordinary heavy-tail balances. |
 | `tot_cur_bal` | 2.9 | $595,363 vs $631,213 | 1.3% | No | Limit below the 99th percentile; flags real borrowers. Lower limit negative. |
 | `avg_cur_bal` | 4.8 | $61,707 vs $70,494 | 1.7% | No | Same pattern. |
 | `total_rev_hi_lim` | 5.7 | $120,997 vs $141,140 | 1.6% | No | Same pattern. |
@@ -119,10 +119,11 @@ are over all 30,000 loans; caps are fitted on pre-2015 loans.
 
 | Field | Errors repaired | Genuine extremes kept and capped |
 |---|---|---|
-| `annual_inc` | 899 incomes typed in thousands, multiplied by 1,000 (issue 10) | 5 incomes above $1M, all verified or source-verified by the platform with tiny debt-to-income; capped at $300,000 |
+| `annual_inc` | 899 incomes typed in thousands, multiplied by 1,000 (issue 10) | 5 incomes above $1M, all verified or source-verified by the platform with tiny debt-to-income, though their credit limits are small for such incomes (an extra zero is possible for three of them); capped at $300,000 either way |
 | `loan_amnt` | 300 amounts 10x too large, divided by 10 (issue 8) | None left; maximum is the $35,000 product limit |
 | `installment` | None | None; 4 loans inconsistent with the loan math are flagged, not changed (issue 9) |
-| `revol_bal`, `tot_cur_bal`, `avg_cur_bal`, `total_rev_hi_lim`, `tot_hi_cred_lim` | None found | Values up to $3.5M kept and capped (for example `revol_bal` at $176,561); a few zeros are real and carry an `is_zero` indicator |
+| `revol_bal` | 308 balances 10x too large, divided by 10 (issue 38); found by checking balance / limit against the reported utilisation and against the total balance | Balances up to $1.04M kept (every cross-check passes) and capped at $126,556; a few zeros are real and carry an `is_zero` indicator |
+| `tot_cur_bal`, `avg_cur_bal`, `total_rev_hi_lim`, `tot_hi_cred_lim` | None found (average balance x account count equals total balance in every loan; no limit is below a balance it contains) | Values up to $3.5M kept and capped; a few zeros are real and carry an `is_zero` indicator |
 | `dti` | None | Zero values are real (8 loans); high values capped at 36.9 |
 | `revol_util` | 295 negative values, sign removed (issue 14) | 114 loans above 100% after a limit cut, capped at 99.2. The cap also removes the distinction between 100% and 150%; with 114 of 30,000 loans we accept that. |
 | `bc_util` | 290 negative values set to missing with an indicator, because the sign flip cannot be proven (issue 14) | 590 loans above 100%, capped at 102.9 |
@@ -160,7 +161,7 @@ Built in `src/credit_risk/features.py` from cleaned fields known when the applic
 | `credit_history_months` | months from the first credit line to the issue date | 19.7% to 14.4% |
 | `loan_to_income` | loan amount / annual income | 10.8% to 23.6% |
 | `installment_to_income` | installment / monthly income | 10.5% to 21.3% |
-| `revol_bal_to_income` | revolving balance / annual income | 15.5% to 19.5% |
+| `revol_bal_to_income` | revolving balance / annual income | 15.6% to 19.9% |
 | `fico_mid` | midpoint of the FICO range | 23.2% to 7.9% |
 | `open_acc_share` | open accounts / total accounts | 15.4% to 20.2% |
 | `recent_accounts_share` | accounts opened in the last 24 months / total accounts | 10.5% to 25.0% |
@@ -170,8 +171,9 @@ lower score go with more default; a longer history goes with less. `loan_to_inco
 are closely related (both scale loan size by income); the correlation and VIF step will decide whether both stay.
 
 **Treatment: the same rules as the other ratio fields.** Cap at the 0.5th and 99.5th percentile, fill missing
-values with the fit-window median, and add a log version only when the capped skewness is above 2. That rule
-selects `revol_bal_to_income` alone (skewness 9.8 raw, 3.6 capped). The 133 loans whose credit date was
+values with the fit-window median, and add a log version only when the capped skewness is above 2. No feature needs
+one after the revolving balances were repaired (issue 38): the heaviest, `revol_bal_to_income`, has a capped skewness of 1.7 (4.1 raw);
+before the repair it was 3.6, which was caused by the corrupted balances. The 133 loans whose credit date was
 corrupted get the median history (179 months) and keep the `earliest_cr_line_invalid` indicator from cleaning.
 Everything is fitted on loans up to 2014-12-31; a test checks that 2015 loans do not change the fit.
 
@@ -311,10 +313,10 @@ explained by the included fields, R-squared in `reports/a5_factor_robustness/`);
 construction, with no honest numeric fill); categorical fields (handled through WoE); and `tot_cur_bal` (see below). Everything
 is fitted on the 14,373 loans up to the fit cutoff.
 
-**`tot_cur_bal` was dropped after a robustness check.** It is 99% explained by the other fields (VIF 101, rank correlation 0.98
+**`tot_cur_bal` was dropped after a robustness check.** It is 99% explained by the other fields (VIF 102 among the 22 candidate fields, rank correlation 0.98
 with total credit limit) and leaves the factor analysis with almost no unique variance for it (0.002), an improper solution.
-Without it the smallest unique variance is 0.02 and the other factors are unchanged (agreement 0.985 or better). The same
-check showed the solution does not hinge on `delinq_2yrs` (KMO 0.42; dropping it gives agreement 0.996, so it stays), while
+Without it the smallest unique variance is 0.02 and the other factors are unchanged (agreement 0.984 or better). The same
+check showed the solution does not hinge on `delinq_2yrs` (KMO 0.43; dropping it gives agreement 0.996, so it stays), while
 dropping `installment` breaks the loan-size factor (agreement 0.65), which is expected because that factor is the loan
 amount and installment pair.
 
@@ -322,10 +324,10 @@ amount and installment pair.
 `scripts/a5_correlation_vif.py`, `reports/a5_correlation_vif/`.
 - The Spearman matrix shows blocks of fields that say the same thing: loan amount and installment (0.97); average balance and
   total credit limit (0.90); public records and bankruptcies (0.86); revolving and bank-card utilization (0.80); revolving
-  balance and revolving limit (0.78); accounts opened in 12 and 24 months (0.71). 6 of 210 pairs are at 0.7 or above, 5% at 0.5
-  or above, 19% at 0.3 or above.
-- Multicollinearity is serious: 7 of 21 fields have a VIF above 5 and 4 above 10 (`loan_amnt` 23, `tot_hi_cred_lim` 22,
-  `installment` 22, `avg_cur_bal` 18). Linear-model coefficients on these would be unstable, and the fields largely repeat
+  balance and revolving limit (0.80); accounts opened in 12 and 24 months (0.71). 6 of 210 pairs are at 0.7 or above, 5% at 0.5
+  or above, 20% at 0.3 or above.
+- Multicollinearity is serious: 7 of 21 fields have a VIF above 5 and 6 above 10 (`loan_amnt` 23, `tot_hi_cred_lim` 23,
+  `installment` 22, `avg_cur_bal` 18, `total_rev_hi_lim` 11, `revol_bal` 11). Linear-model coefficients on these would be unstable, and the fields largely repeat
   one another.
 - Not everything overlaps: `dti`, `delinq_2yrs` and `inq_last_6mths` are close to independent of the rest.
 A handful of underlying dimensions therefore describes most of the 21 fields, which is the case for reducing them.
@@ -334,15 +336,15 @@ A handful of underlying dimensions therefore describes most of the 21 fields, wh
 Fields are standardized first (fitted on the fit window). Without standardizing, the first component explains 77% of the variance
 and is 99.8% one field (`credit_history_months`, which is on a larger scale), so raw-scale PCA is not used.
 - **Seven components.** Kaiser (eigenvalue above 1) and parallel analysis (eigenvalue beats 95% of pure noise) both give 7, and
-  they explain 74.5% of the variance. Reaching 80% would need 9, but components beyond 7 do not beat noise.
-- **What they are**, from the loadings: PC1 (22.7%) overall credit size (total credit limit 0.81, revolving limit 0.74, income
-  0.68, loan amount 0.67, revolving balance 0.66); PC2 (13.3%) utilization (0.76, 0.69) against recent account opening
-  (-0.62, -0.59); PC3 (10.4%) FICO score (0.72) against utilization (-0.59, -0.53); PC4 (9.1%) public records (0.67, 0.65) with
-  mortgage accounts and a low `dti`; PC5 (7.3%) loan size (0.53, 0.52) against average balance (-0.47); PC6 (6.3%) history length
+  they explain 74.6% of the variance. Reaching 80% would need 9, but components beyond 7 do not beat noise.
+- **What they are**, from the loadings: PC1 (22.8%) overall credit size (total credit limit 0.81, revolving limit 0.74, income
+  0.68, revolving balance 0.68); PC2 (13.3%) utilization (0.77, 0.69) against recent account opening
+  (-0.62, -0.59); PC3 (10.4%) FICO score (0.72) against utilization (-0.59, -0.52); PC4 (9.2%) public records (0.67, 0.65) with
+  mortgage accounts and a low `dti`; PC5 (7.3%) loan size (0.53, 0.51) against average balance (-0.47); PC6 (6.3%) history length
   and `dti` against inquiries; PC7 (5.4%) delinquencies (0.80).
 - **What the outlier treatment changed.** The structure is almost the same (loading similarity with the untreated PCA: PC1 0.99,
-  PC2 0.97, PC3 0.96), but untreated, PC1 explains 19% instead of 23% and its scores are heavy-tailed: kurtosis 4.9 against -0.2,
-  and one loan sits 11.6 standard deviations out against 3.6 after treatment. The treatment mostly stops a few extreme loans from
+  PC2 0.98, PC3 0.96), but untreated, PC1 explains 20% instead of 23% and its scores are heavy-tailed: kurtosis 6.3 against -0.2,
+  and one loan sits 11.5 standard deviations out against 3.6 after treatment. The treatment mostly stops a few extreme loans from
   steering the leading component.
 
 ### Factor analysis (`scripts/a5_factor_analysis.py`, `reports/a5_factor_analysis/`)
@@ -350,9 +352,9 @@ Maximum-likelihood factor analysis (scikit-learn) with a varimax rotation. KMO, 
 small functions in `src/credit_risk/factor_tools.py`, checked against the reference library (identical KMO and Bartlett) and
 against simulated data with a known factor correlation. The library itself no longer runs with current scikit-learn, so it was
 dropped as a dependency.
-- **Suitability.** Bartlett's test rejects "no shared structure" (chi-square 219,488, p below 1e-300). KMO is 0.668 overall
-  (above the 0.6 minimum). Six fields are below 0.6 (`delinq_2yrs` 0.42, `avg_cur_bal` 0.56, `dti` 0.56, `pub_rec` 0.58,
-  `open_acc` 0.58, `pub_rec_bankruptcies` 0.59): they share less with the rest.
+- **Suitability.** Bartlett's test rejects "no shared structure" (chi-square 225,269, p below 1e-300). KMO is 0.661 overall
+  (above the 0.6 minimum). Seven fields are below 0.6 (`delinq_2yrs` 0.43, `avg_cur_bal` 0.56, `dti` 0.56, `revol_util` 0.57,
+  `pub_rec` 0.58, `open_acc` 0.58, `pub_rec_bankruptcies` 0.59): they share less with the rest.
 - **Eight factors, chosen by a rule fixed before looking at the result.** Parallel analysis alone gives 10, but with 14,000 loans
   nearly any real pattern beats noise, so the count follows a stated rule: the largest number of factors where each has at least two
   loadings of 0.4 or more, at least 3% of the variance, and a 2013-vs-2014 congruence of at least 0.95. Five to eight pass
@@ -363,16 +365,16 @@ dropped as a dependency.
   0.50 between loan size and revolving credit size). Varimax keeps one cross-loading (income loads on credit capacity 0.46 and on
   debt burden -0.52) and gives uncorrelated scores (largest correlation between two scores 0.08), which suits a model built beside
   fields we just showed overlap heavily. Limit: some factor pairs are genuinely about half-correlated, which varimax ignores.
-- **The factors**, named only from their loadings (67.9% of the variance in total; single-factor AUC in the last column):
+- **The factors**, named only from their loadings (68.1% of the variance in total; single-factor AUC in the last column):
 
 | Factor | Variance | Fields and loadings | AUC alone |
 |---|---|---|---|
 | `credit_capacity` | 12.0% | average balance 0.97, total credit limit 0.91, mortgage accounts 0.54 | 0.559 |
 | `loan_size` | 10.5% | installment 0.96, loan amount 0.96 | 0.546 |
-| `revolving_credit_size` | 8.5% | revolving limit 0.85, revolving balance 0.82 | 0.534 |
-| `account_count` | 7.3% | open accounts 0.87, total accounts 0.63 | 0.516 |
-| `revolving_utilization` | 10.5% | revolving utilization 0.94, bank-card utilization 0.85, FICO -0.56 | 0.562 |
-| `public_records` | 7.9% | bankruptcies 0.89, public records 0.87 | 0.515 |
+| `revolving_credit_size` | 8.8% | revolving limit 0.87, revolving balance 0.83 | 0.535 |
+| `account_count` | 7.2% | open accounts 0.87, total accounts 0.63 | 0.517 |
+| `revolving_utilization` | 10.5% | revolving utilization 0.94, bank-card utilization 0.85, FICO -0.56 | 0.561 |
+| `public_records` | 7.9% | bankruptcies 0.88, public records 0.87 | 0.516 |
 | `recent_account_opening` | 7.7% | accounts opened in 12 months 0.82, in 24 months 0.81 | 0.588 |
 | `debt_burden` | 3.5% | `dti` 0.60, income -0.52 | 0.569 |
 
@@ -381,7 +383,7 @@ dropped as a dependency.
 - **Stable.** Loadings fitted on 2013 and on 2014 loans agree (congruence 0.989 to 0.999).
 - **What the factors miss.** Four fields are barely represented (communality: `delinq_2yrs` 0.08, `inq_last_6mths` 0.10,
   credit history 0.14, `mort_acc` 0.37), so they stay as raw fields beside the factors.
-- **Factors are not the PCA components.** Each factor's best match with a component is only 0.37 to 0.71 in correlation, so the two
+- **Factors are not the PCA components.** Each factor's best match with a component is only 0.36 to 0.71 in correlation, so the two
   are different constructs and both go in the contract. On their own the factors predict default modestly (AUC 0.52 to 0.59), and
   the model ablation will show whether they help beyond the raw fields.
 
@@ -397,8 +399,8 @@ alternative; the ablation in the ML half reports which of the two, if either, ad
 
 ### Stability, 2013 against 2014 (`scripts/a6_stability_psi.py`, `reports/a6_stability_psi/`)
 PSI (Population Stability Index) measures how much a field's distribution moved: under 0.1 stable, 0.1 to 0.25 moderate,
-0.25 or more major. Bins are set on the earlier year. 45 fields and category sets were checked, including all 8 factor scores.
-- **43 of 45 are stable.** All factor scores are stable (0.006 to 0.033), so the factors describe 2014 applicants the way they
+0.25 or more major. Bins are set on the earlier year. 44 fields and category sets were checked, including all 8 factor scores.
+- **42 of 44 are stable.** All factor scores are stable (0.006 to 0.031), so the factors describe 2014 applicants the way they
   describe 2013 ones. The next period is similar: only the platform's own `int_rate` moves between 2014 and 2015 (PSI 0.19,
   moderate), which means the platform changed how it prices, another reason not to depend on it.
 - **`job_group` (6.3): a data change, now repaired.** The title field changed meaning in October 2013 (see "Job titles"). Within
@@ -414,18 +416,18 @@ testing 8 factors. Loans to 2014.
 
 | Factor | Default rate, decile 1 to 10 | Trend z | Holm p | AUC alone |
 |---|---|---|---|---|
-| `recent_account_opening` | 9.7% to 26.3% | +13.9 | below 0.001 | 0.588 |
-| `debt_burden` | 11.3% to 22.3% | +10.7 | below 0.001 | 0.569 |
-| `revolving_utilization` | 12.3% to 21.1% | +9.4 | below 0.001 | 0.562 |
-| `credit_capacity` | 19.4% to 10.5% | -9.3 | below 0.001 | 0.559 |
-| `loan_size` | 12.9% to 22.4% | +7.0 | below 0.001 | 0.546 |
-| `revolving_credit_size` | 21.1% to 13.5% | -5.3 | below 0.001 | 0.534 |
-| `account_count` | 16.3% to 18.4% | +2.4 | 0.033 | 0.516 |
-| `public_records` | 17.3% to 17.7% | -2.3 | 0.033 | 0.515 |
+| `recent_account_opening` | 9.7% to 26.3% | +13.8 | below 0.001 | 0.588 |
+| `debt_burden` | 11.1% to 22.2% | +10.6 | below 0.001 | 0.569 |
+| `revolving_utilization` | 12.2% to 21.5% | +9.5 | below 0.001 | 0.561 |
+| `credit_capacity` | 19.5% to 10.5% | -9.3 | below 0.001 | 0.559 |
+| `loan_size` | 12.9% to 22.3% | +7.1 | below 0.001 | 0.546 |
+| `revolving_credit_size` | 21.1% to 13.3% | -5.4 | below 0.001 | 0.535 |
+| `public_records` | 17.6% to 17.7% | -2.5 | 0.028 | 0.516 |
+| `account_count` | 16.5% to 18.5% | +2.4 | 0.028 | 0.516 |
 
 Six factors show a clear, steady trend in the direction credit logic expects (more recent borrowing, more debt relative to income,
 higher utilization and larger loans mean more default; more capacity and larger revolving limits mean less). `account_count` and
-`public_records` are statistically detectable but practically negligible (a 2-point or 0.4-point range): we do not claim they
+`public_records` are statistically detectable but practically negligible (a 2.0-point and a 0.1-point range): we do not claim they
 separate risk.
 
 ### Segments, with a rule against small groups
@@ -441,10 +443,10 @@ within that segmentation; otherwise the finding is "no clear difference" or "too
   15 smaller states are "too few loans to say".
 
 ### What the factors add beyond the platform's grade (`scripts/a6_factors_vs_grade.py`)
-On later loans (time-ordered folds before 2015), AUC: sub-grade alone 0.697, factors alone 0.652, sub-grade plus factors 0.706. The
+On later loans (time-ordered folds before 2015), AUC: sub-grade alone 0.697, factors alone 0.651, sub-grade plus factors 0.706. The
 paired gain from adding the factors is +0.010 and +0.007 in the two folds, with intervals that touch zero (-0.003 to +0.021), so a
 better overall ranking is not proven. Within a grade band, though, the factors separate loans clearly (default rate, lowest against
-highest third of factor-based risk, with non-overlapping intervals): grades A-B 7.4% against 13.1%; C 14.1% against 25.8%; D-G 25.8%
+highest third of factor-based risk, with non-overlapping intervals): grades A-B 7.7% against 13.2%; C 14.1% against 25.8%; D-G 26.2%
 against 41.6%. The factors therefore carry risk information the grade does not fully use, but the grade already captures most of the
 ranking and the factors correlate with it (utilization 0.33, recent account opening 0.27), so the overall gain is small. The
 factors serve as an explanation and a cross-check, not a replacement.
@@ -481,6 +483,11 @@ An adversarial review of the work so far, with what each finding changed.
 - **The holdout `revol_util` unit error** (issue 36) was missed by the first holdout check, which only looked for the errors found
   in training. It would have corrupted every holdout score silently. Fixed with an explicit conversion at load time and a fail-fast
   guard in the transformer. Lesson applied: a new file is compared with earlier years field by field, not only checked for known errors.
+- **The revolving balance error** (issue 38) was found in a second review by testing relationships that must hold between fields, which
+  I had not done for the training data. 308 balances were 10 times too large and made up 45% of the largest balances, so the "genuine
+  extremes" of that field were mostly errors. Fixed with two independent checks, and every figure that depends on the field was
+  regenerated from the scripts (the 3-standard-deviation table, the factor loadings, the VIF, the PCA and the deciles moved slightly;
+  no conclusion changed). A regression test now asserts these relationships on the cleaned data.
 - **Tuning inside the training years is optimistic.** WoE values are fitted on all pre-2015 labels (as the contract requires), so a
   validation fold inside those years has already been seen by the WoE: AUC 0.719 against 0.711 when the WoE is fitted on the training
   part only. The clean figure is the 2015 validation (0.716 for a quick WoE logistic). Hyperparameter tuning on time folds is therefore

@@ -53,7 +53,7 @@ CATALOG = [
     _f("pub_rec_bankruptcies", BUR, True, "input", "high", "Bureau count; no errors found."),
     _f("open_acc", BUR, True, "input", "high", "Bureau count; never above total_acc."),
     _f("total_acc", BUR, True, "input", "high", "Bureau count; no errors found; never below open_acc."),
-    _f("revol_bal", BUR, True, "input", "high", "Bureau amount; no errors found; heavy tail is genuine and capped; a few real zeros."),
+    _f("revol_bal", BUR, True, "input", "high", "Bureau amount. 308 loans (1%) had the balance 10x too large, found by checking balance / limit against the reported utilisation and against the total balance, and repaired; the remaining heavy tail passes those checks and is capped; a few real zeros."),
     _f("revol_util", BUR, True, "input", "medium", "295 negative values (1%) were sign flips, proven against balance and limit; 12 missing (5 with no revolving limit, so undefined). The 2016 holdout stores it as a fraction (0.91) in every row; it is converted to percent on loading and batches in the wrong unit are rejected."),
     _f("bc_util", BUR, True, "input", "medium", "290 negative values (1%) set to missing because the sign flip cannot be proven; 1% more missing in the bureau file, mostly for borrowers with few open accounts (8.6% missing at 3 or fewer open accounts vs 0.4% above 10), with a weak, unproven link to higher default (21.2% vs 17.2%, p = 0.19)."),
     _f("tot_cur_bal", BUR, True, "input", "high", "Bureau amount; no errors found; heavy tail capped."),

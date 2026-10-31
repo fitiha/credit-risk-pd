@@ -8,9 +8,9 @@ loan_amnt_log,tree_6,6,5.0396,0.0309,0.0193,False,False
 installment_log,quantile_10,10,9.9294,0.0239,0.0204,False,False
 installment_log,monotonic_merge,5,9.9936,0.018,0.017,True,False
 installment_log,tree_6,6,5.1573,0.032,0.0186,False,False
-revol_bal_log,quantile_10,10,9.9936,0.0082,0.0012,False,False
-revol_bal_log,monotonic_merge,5,5.0075,0.0041,-0.0005,True,False
-revol_bal_log,tree_6,6,6.1738,0.0145,0.0036,False,False
+revol_bal_log,quantile_10,10,9.9829,0.0058,-0.0001,False,False
+revol_bal_log,monotonic_merge,5,5.0075,0.0043,-0.0004,True,False
+revol_bal_log,tree_6,6,6.0347,0.0156,0.0041,False,False
 tot_cur_bal_log,quantile_10,10,9.9936,0.0397,0.0356,False,False
 tot_cur_bal_log,monotonic_merge,5,5.0075,0.0381,0.029,True,True
 tot_cur_bal_log,tree_6,6,8.7096,0.0475,0.0381,False,False
@@ -86,6 +86,6 @@ open_acc_share_treated,tree_6,6,5.0503,0.0241,0.0121,False,False
 recent_accounts_share_treated,quantile_10,10,9.0199,0.0934,0.0882,False,False
 recent_accounts_share_treated,monotonic_merge,7,5.0503,0.0914,0.0926,True,True
 recent_accounts_share_treated,tree_6,6,5.4355,0.0996,0.0863,False,False
-revol_bal_to_income_log,quantile_10,10,9.9936,0.0105,0.013,False,False
-revol_bal_to_income_log,monotonic_merge,6,5.0075,0.0114,0.0139,True,False
-revol_bal_to_income_log,tree_6,6,6.0561,0.0181,0.0173,False,False
+revol_bal_to_income_treated,quantile_10,10,9.9936,0.0109,0.0114,False,False
+revol_bal_to_income_treated,monotonic_merge,5,9.9936,0.0102,0.0126,True,False
+revol_bal_to_income_treated,tree_6,6,6.0775,0.0188,0.0168,False,False

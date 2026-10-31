@@ -48,7 +48,7 @@ for name, cols in variants.items():
 pd.DataFrame(rows).round(3).to_csv(TAB / "field_set_variants.csv", index=False)
 
 Z = StandardScaler().fit_transform(fit[FACTOR_FIELDS])
-LEFT_OUT = ["loan_to_income_treated", "installment_to_income_treated", "revol_bal_to_income_log", "open_acc_share_treated",
+LEFT_OUT = ["loan_to_income_treated", "installment_to_income_treated", "revol_bal_to_income_treated", "open_acc_share_treated",
             "recent_accounts_share_treated", "int_rate", "tot_cur_bal_log"]
 r2 = pd.DataFrame({"field_left_out": LEFT_OUT, "r_squared_on_included_fields": [LinearRegression().fit(Z, fit[f]).score(Z, fit[f]) for f in LEFT_OUT]})
 r2.round(3).to_csv(TAB / "left_out_fields_explained_by_included.csv", index=False)

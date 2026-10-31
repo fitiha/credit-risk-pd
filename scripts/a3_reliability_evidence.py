@@ -116,6 +116,7 @@ checks = {
                                             "mort_acc", "acc_open_past_24mths", "num_tl_op_past_12m"]] < 0).any(axis=1),
     "non-whole bureau count": (d[["inq_last_6mths", "delinq_2yrs", "pub_rec", "open_acc", "total_acc", "mort_acc"]] % 1 != 0).any(axis=1),
     "installment above 40% of income": d.installment * 12 / d.annual_inc > .4,
+    "revolving balance above 1.5x the total current balance (after repair)": d.revol_bal > 1.5 * d.tot_cur_bal,
 }
 pd.Series({k: int(v.sum()) for k, v in checks.items()}, name="loans_violating").to_csv(TAB / "bureau_consistency_checks.csv", index_label="check")
 

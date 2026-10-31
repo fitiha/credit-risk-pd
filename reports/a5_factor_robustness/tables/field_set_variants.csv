@@ -1,6 +1,6 @@
 variant,fields,smallest_unique_variance,kmo_overall,min_agreement_with_final
-final model (21 fields),21,0.02,0.668,1.0
-add back tot_cur_bal_log (22 fields),22,0.002,0.705,0.985
-drop delinq_2yrs_capped (KMO below 0.5),20,0.02,0.67,0.996
-drop installment_log,20,0.013,0.665,0.648
-drop tot_hi_cred_lim_log,20,0.022,0.672,0.927
+final model (21 fields),21,0.02,0.661,1.0
+add back tot_cur_bal_log (22 fields),22,0.002,0.698,0.984
+drop delinq_2yrs_capped (KMO below 0.5),20,0.02,0.663,0.996
+drop installment_log,20,0.013,0.658,0.645
+drop tot_hi_cred_lim_log,20,0.022,0.664,0.926

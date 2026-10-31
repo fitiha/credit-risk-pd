@@ -1,4 +1,4 @@
 verification_status,median_installment_to_income_pct,pct_installment_above_40pct_of_income,pct_installment_above_100pct_of_income,spearman_dti_vs_revolving_balance_to_income,pct_dti_under_5_with_balance_over_half_income
-Not Verified,6.3379,0.0,0.0,0.3844,0.0
-Source Verified,7.7876,0.0,0.0,0.363,0.0607
-Verified,8.7266,0.0,0.0,0.4341,0.0386
+Not Verified,6.3379,0.0,0.0,0.3905,0.0
+Source Verified,7.7876,0.0,0.0,0.3647,0.0607
+Verified,8.7266,0.0,0.0,0.4381,0.0
