@@ -1,0 +1,8 @@
+feature,definition,missing_in_fit_window,median,min,max,cap_low,cap_high,fill_value,skew_raw,skew_capped,log_added,auc_alone
+credit_history_months,months from the first credit line to the loan issue date,133,179.0,37.0,765.0,44.0,510.805,179.0,1.091,0.988,False,0.531
+loan_to_income,loan amount divided by annual income,0,0.208,0.002,0.5,0.022,0.466,0.208,0.345,0.337,False,0.591
+installment_to_income,monthly installment divided by monthly income,0,0.077,0.001,0.223,0.009,0.188,0.077,0.469,0.455,False,0.575
+revol_bal_to_income,revolving balance divided by annual income,0,0.197,0.0,9.842,0.002,1.921,0.197,9.769,3.57,True,0.528
+fico_mid,midpoint of the FICO range,0,687.0,662.0,842.0,662.0,812.0,687.0,1.425,1.371,False,0.586
+open_acc_share,open accounts divided by total accounts,0,0.467,0.045,1.0,0.154,1.0,0.467,0.569,0.578,False,0.536
+recent_accounts_share,accounts opened in the past 24 months divided by total accounts,0,0.16,0.0,0.929,0.0,0.706,0.16,1.386,1.291,False,0.587

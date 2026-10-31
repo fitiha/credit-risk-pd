@@ -127,3 +127,52 @@ are over all 30,000 loans; caps are fitted on pre-2015 loans.
 | `revol_util` | 295 negative values, sign removed (issue 14) | 114 loans above 100% after a limit cut, capped at 99.2. The cap also removes the distinction between 100% and 150%; with 114 of 30,000 loans we accept that. |
 | `bc_util` | 290 negative values set to missing with an indicator, because the sign flip cannot be proven (issue 14) | 590 loans above 100%, capped at 102.9 |
 | Count fields | None | Capped at the 99.5th percentile (0.1% to 0.4% of loans) |
+
+## Platform's own score (`grade`, `sub_grade`, `int_rate`) as model inputs
+
+**Question.** These are known at application time, but they are outputs of the platform's existing risk
+model. Using them can make a new model look good by copying the old one.
+
+**Evidence** (`scripts/a3_platform_score_check.py`, pre-2015 loans, time-ordered folds, AUC on later loans):
+
+| Inputs | AUC |
+|---|---|
+| sub-grade alone | 0.697 |
+| interest rate alone | 0.696 |
+| our inputs without the platform score | 0.708 |
+| our inputs plus sub-grade | 0.712 |
+
+Our inputs match the platform score on their own, and adding the sub-grade gains 0.004, which is inside the
+noise (95% intervals overlap heavily).
+
+**Choice: the platform score is not a default model input.** It stays in the data contract, flagged as a
+platform score, so it serves as the benchmark ("does the model beat grade alone?") and as a test variant.
+This keeps the model independent of the old risk model and makes it clear what our own fields and factors add.
+Cost: almost none, per the table above.
+
+## Application-time features
+
+Built in `src/credit_risk/features.py` from cleaned fields known when the applicant applies. Evidence
+(`scripts/a3_feature_evidence.py`, `reports/a3_feature_evidence/`) uses loans up to the fit cutoff.
+
+| Feature | Definition | Default rate, lowest to highest decile |
+|---|---|---|
+| `credit_history_months` | months from the first credit line to the issue date | 19.7% to 14.4% |
+| `loan_to_income` | loan amount / annual income | 10.8% to 23.6% |
+| `installment_to_income` | installment / monthly income | 10.5% to 21.3% |
+| `revol_bal_to_income` | revolving balance / annual income | 15.5% to 19.5% |
+| `fico_mid` | midpoint of the FICO range | 23.2% to 7.9% |
+| `open_acc_share` | open accounts / total accounts | 15.4% to 20.2% |
+| `recent_accounts_share` | accounts opened in the last 24 months / total accounts | 10.5% to 25.0% |
+
+Each moves in the direction credit logic expects: more debt relative to income, more recent borrowing and a
+lower score go with more default; a longer history goes with less. `loan_to_income` and `installment_to_income`
+are closely related (both scale loan size by income); the correlation and VIF step will decide whether both stay.
+
+**Treatment: the same rules as the other ratio fields.** Cap at the 0.5th and 99.5th percentile, fill missing
+values with the fit-window median, and add a log version only when the capped skewness is above 2. That rule
+selects `revol_bal_to_income` alone (skewness 9.8 raw, 3.6 capped). The 133 loans whose credit date was
+corrupted get the median history (179 months) and keep the `earliest_cr_line_invalid` indicator from cleaning.
+Everything is fitted on loans up to 2014-12-31; a test checks that 2015 loans do not change the fit.
+
+**Dropped:** `credit_limit_to_income` (AUC 0.53, adds little over the credit-limit and income fields already used).

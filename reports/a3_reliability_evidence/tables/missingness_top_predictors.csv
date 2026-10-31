@@ -1,0 +1,26 @@
+field,rank,predictor,standardised_coefficient
+emp_title,1,verification_status_Not Verified,-1.277
+emp_title,2,verification_status_Verified,0.957
+emp_title,3,annual_inc,-0.683
+emp_title,4,term,-0.284
+emp_title,5,revol_bal,0.262
+emp_length,1,verification_status_Not Verified,-1.716
+emp_length,2,verification_status_Verified,1.265
+emp_length,3,annual_inc,-0.957
+emp_length,4,int_rate,-0.465
+emp_length,5,verification_status_Source Verified,0.371
+mths_since_last_delinq,1,delinq_2yrs,-3.142
+mths_since_last_delinq,2,fico_range_low,0.698
+mths_since_last_delinq,3,total_acc,-0.462
+mths_since_last_delinq,4,revol_bal,0.385
+mths_since_last_delinq,5,int_rate,0.276
+bc_util,1,open_acc,-1.637
+bc_util,2,total_acc,0.611
+bc_util,3,dti,0.369
+bc_util,4,revol_bal,-0.325
+bc_util,5,loan_amnt,-0.282
+earliest_cr_line (corrupted date),1,term,0.276
+earliest_cr_line (corrupted date),2,grade_G,-0.227
+earliest_cr_line (corrupted date),3,year,-0.191
+earliest_cr_line (corrupted date),4,purpose_vacation,-0.184
+earliest_cr_line (corrupted date),5,tot_cur_bal,-0.174
