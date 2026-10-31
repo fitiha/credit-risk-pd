@@ -9,23 +9,14 @@ import numpy as np
 import pandas as pd
 
 from credit_risk.binning import assign_bins, fit_edges
-from credit_risk.categorical import order_emp_length
-from credit_risk.cleaning import Cleaner
-from credit_risk.features import FeatureBuilder, FeatureTreater
 from credit_risk.io import FIT_CUTOFF, load_applications
-from credit_risk.outliers import AmountTreater, CountTreater, RatioTreater
 from credit_risk.reporting import fresh_dirs
+from credit_risk.transform import ApplicationTransformer
 from credit_risk.woe import apply_woe, information_value, iv_on_new_data, woe_table
 
 FIG, TAB = fresh_dirs("a4_binning_comparison")
 raw = load_applications()
-d = Cleaner().fit(raw).transform(raw)
-d = AmountTreater().fit(d).transform(d)
-d = RatioTreater().fit(d).transform(d)
-d = CountTreater().fit(d).transform(d)
-d = FeatureBuilder().transform(d)
-d = FeatureTreater().fit(d).transform(d)
-d["emp_length_years"] = order_emp_length(d.emp_length)
+d = ApplicationTransformer().fit(raw).transform(raw)
 fit = d[d.issue_d <= FIT_CUTOFF].reset_index(drop=True)
 train, test = fit[fit.issue_d <= "2014-06-30"], fit[fit.issue_d > "2014-06-30"]
 

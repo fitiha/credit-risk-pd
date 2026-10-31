@@ -9,23 +9,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from credit_risk.binning import assign_bins, fit_edges
-from credit_risk.categorical import CategoryGrouper
-from credit_risk.cleaning import Cleaner
-from credit_risk.features import FeatureBuilder, FeatureTreater
 from credit_risk.io import FIT_CUTOFF, load_applications, load_servicing
-from credit_risk.outliers import AmountTreater, CountTreater, RatioTreater
 from credit_risk.reporting import fresh_dirs
+from credit_risk.transform import ApplicationTransformer
 from credit_risk.woe import WoEEncoder, information_value, strength, woe_table
 
 FIG, TAB = fresh_dirs("a4_iv_ranking")
 raw = load_applications()
-d = Cleaner().fit(raw).transform(raw)
-d = AmountTreater().fit(d).transform(d)
-d = RatioTreater().fit(d).transform(d)
-d = CountTreater().fit(d).transform(d)
-d = FeatureBuilder().transform(d)
-d = FeatureTreater().fit(d).transform(d)
-d = CategoryGrouper().fit(d).transform(d)
+d = ApplicationTransformer().fit(raw).transform(raw)
 
 NUMERIC = (["annual_inc_log", "loan_amnt_log", "installment_log", "revol_bal_log", "tot_cur_bal_log", "avg_cur_bal_log",
             "total_rev_hi_lim_log", "tot_hi_cred_lim_log", "dti_treated", "revol_util_treated", "bc_util_treated",
