@@ -1,0 +1,4 @@
+group,loans,default_rate,ci_low,ci_high,default_rate_when_present,p_value_fisher
+revol_util missing,4,0.25,0.0456,0.6994,0.1724,0.5309
+bc_util missing in the bureau file,151,0.2119,0.1543,0.2838,0.172,0.1943
+bc_util set to missing (negative sign),138,0.2319,0.1693,0.309,0.1718,0.0696

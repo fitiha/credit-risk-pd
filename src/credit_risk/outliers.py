@@ -47,3 +47,61 @@ class AmountTreater(BaseEstimator, TransformerMixin):
         for f in self.zero_fields_:
             d[f"{f}_is_zero"] = d[f] == 0  # NaN == 0 is False: missing is not zero
         return d
+
+
+RATIO_FIELDS = ["dti", "revol_util", "bc_util"]
+COUNT_FIELDS = ["delinq_2yrs", "pub_rec", "pub_rec_bankruptcies", "inq_last_6mths", "mort_acc"]
+
+
+class RatioTreater(BaseEstimator, TransformerMixin):
+    """Cap ratio fields at their 0.5th and 99.5th percentile and fill missing values.
+
+    Adds `<field>_treated` (capped, then missing filled with the fit-window median).
+    A ratio above 100% after a limit cut is a genuine extreme, so it is capped, not
+    removed. Fields with at least `min_missing_share` of values missing in the fit
+    window also get `<field>_missing`, because missingness may carry information.
+    """
+
+    def __init__(self, fields=None, lower_q=0.005, upper_q=0.995, min_missing_share=0.01):
+        self.fields = fields
+        self.lower_q = lower_q
+        self.upper_q = upper_q
+        self.min_missing_share = min_missing_share
+
+    def fit(self, X, y=None):
+        fields = list(self.fields or RATIO_FIELDS)
+        pre = X[X["issue_d"] <= FIT_CUTOFF]
+        self.fields_ = fields
+        self.caps_ = {f: (float(pre[f].quantile(self.lower_q)), float(pre[f].quantile(self.upper_q)))
+                      for f in fields}
+        self.fill_ = {f: float(pre[f].clip(*self.caps_[f]).median()) for f in fields}
+        self.flag_fields_ = [f for f in fields if pre[f].isna().mean() >= self.min_missing_share]
+        return self
+
+    def transform(self, X):
+        d = X.copy()
+        for f, (lo, hi) in self.caps_.items():
+            d[f"{f}_treated"] = d[f].clip(lo, hi).fillna(self.fill_[f])
+        for f in self.flag_fields_:
+            d[f"{f}_missing"] = d[f].isna()
+        return d
+
+
+class CountTreater(BaseEstimator, TransformerMixin):
+    """Cap long-tailed count fields at their 99.5th percentile (zeros stay zero)."""
+
+    def __init__(self, fields=None, upper_q=0.995):
+        self.fields = fields
+        self.upper_q = upper_q
+
+    def fit(self, X, y=None):
+        pre = X[X["issue_d"] <= FIT_CUTOFF]
+        self.fields_ = list(self.fields or COUNT_FIELDS)
+        self.caps_ = {f: float(pre[f].quantile(self.upper_q)) for f in self.fields_}
+        return self
+
+    def transform(self, X):
+        d = X.copy()
+        for f, hi in self.caps_.items():
+            d[f"{f}_capped"] = d[f].clip(upper=hi)
+        return d

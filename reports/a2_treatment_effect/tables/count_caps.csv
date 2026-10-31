@@ -1,0 +1,6 @@
+field,cap,max_before,rows_capped,rows_capped_pct
+delinq_2yrs,5.0,18.0,56,0.39
+pub_rec,3.0,10.0,34,0.24
+pub_rec_bankruptcies,2.0,4.0,16,0.11
+inq_last_6mths,5.0,6.0,33,0.23
+mort_acc,10.0,18.0,44,0.31
