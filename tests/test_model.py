@@ -130,3 +130,19 @@ def test_numbers_sent_as_text_are_accepted(predictor):
     rec = example("borderline")
     as_text = {k: (str(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else v) for k, v in rec.items()}
     assert predictor.predict(as_text)["pd"] == predictor.predict(rec)["pd"]
+
+
+@pytest.mark.parametrize("field,value,message", [("loan_amnt", 80000, "10 times too large"), ("annual_inc", 58, "entered in thousands"),
+                                                   ("fico_range_low", 780, "fico_range_low is above"), ("revol_util", -20, "negative"),
+                                                   ("revol_bal", 90000, "revol_bal looks 10 times too large")])
+def test_a_live_application_that_looks_mis_entered_is_stopped_but_historical_repair_still_works(predictor, field, value, message):
+    rec = example("low_risk")
+    rec[field] = value
+    with pytest.raises(ContractViolation, match=message):
+        predictor.predict(rec)
+    assert 0 < predictor.predict(rec, strict=False)["pd"] < 1  # the contract's repair rules still apply when asked for
+
+
+def test_the_example_applicants_need_no_repair(predictor):
+    for name in ("low_risk", "borderline", "high_risk"):
+        predictor.predict(example(name))  # strict is the default and must not complain

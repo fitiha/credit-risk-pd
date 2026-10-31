@@ -1,0 +1,10 @@
+median_of,all 2015 loans,defaulted although PD below 6%,repaid although PD above 40%
+term,36.0,36.0,60.0
+annual_inc,65000.0,118000.0,57000.0
+dti_treated,18.24,12.84,23.49
+fico_mid_treated,687.0,727.0,677.0
+revol_util_treated,53.6,30.4,61.5
+credit_history_months_treated,180.0,229.0,168.5
+loan_amnt,12500.0,14000.0,16800.0
+inq_last_6mths_capped,0.0,0.0,1.0
+number of loans,15627.0,73.0,612.0

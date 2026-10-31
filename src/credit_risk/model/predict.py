@@ -18,10 +18,30 @@ from credit_risk.model import policy
 from credit_risk.model.data import load_contract
 from credit_risk.model.inputs import reason_text
 from credit_risk.model.models import add_grade_rank
-from credit_risk.spec import NUMERIC_FIELDS, RAW_FIELDS, validate_cleaned, validate_raw
+from credit_risk.spec import NUMERIC_FIELDS, RAW_FIELDS, ContractViolation, validate_cleaned, validate_raw
 
 MIN_REASON_LOGODDS = 0.10   # a reason must raise the odds of default by roughly 10% or more; smaller contributions are not worth telling the applicant
 MAX_REASONS = 4
+
+
+REPAIR_MESSAGES = {
+    "loan_amnt_fixed": "loan_amnt looks 10 times too large for the installment, rate and term",
+    "annual_inc_fixed": "annual_inc is below 1,000 and looks like it was entered in thousands",
+    "revol_bal_fixed": "revol_bal looks 10 times too large for the revolving limit, utilisation and total balance",
+    "earliest_cr_line_invalid": "earliest_cr_line is later than the application date",
+    "bc_util_invalid": "bc_util is negative",
+    "int_rate_imputed": "int_rate is the placeholder value 6.00",
+}
+
+
+def repairs_needed(raw, cleaned):
+    """What the cleaning step had to correct in these rows. Fine for historical data; a live application should be corrected at the source."""
+    problems = [msg for flag, msg in REPAIR_MESSAGES.items() if flag in cleaned and bool(cleaned[flag].any())]
+    if (pd.to_numeric(raw["fico_range_low"]) > pd.to_numeric(raw["fico_range_high"])).any():
+        problems.append("fico_range_low is above fico_range_high")
+    if (pd.to_numeric(raw["revol_util"]) < 0).any():
+        problems.append("revol_util is negative")
+    return problems
 
 
 class ContractVersionMismatch(RuntimeError):
@@ -46,13 +66,15 @@ class Predictor:
                 df[f["name"]] = np.nan
         return df
 
-    def frame(self, records):
-        """Raw record(s) -> validated modelling frame."""
+    def frame(self, records, strict=False):
+        """Raw record(s) -> validated modelling frame. With strict=True an application that needs any repair is rejected."""
         df = self._frame(records)
         validate_raw(df)
         df = df.assign(**{c: pd.to_numeric(df[c]) for c in NUMERIC_FIELDS if c in df.columns})  # numbers sent as text ("8000") become numbers
         out = self.transformer.transform(df)
         validate_cleaned(out)
+        if strict and (problems := repairs_needed(df, out)):
+            raise ContractViolation("the application looks mis-entered, please correct it:\n  - " + "\n  - ".join(problems))
         return add_grade_rank(out)
 
     def reasons(self, frame_row):
@@ -70,9 +92,12 @@ class Predictor:
                 out.append(text)
         return out
 
-    def predict(self, record):
-        """record: dict of raw application and bureau fields. Returns a dict with pd, decision, model_version and reason_codes."""
-        frame = self.frame(record)
+    def predict(self, record, strict=True):
+        """record: dict of raw application and bureau fields. Returns a dict with pd, decision, model_version and reason_codes.
+
+        strict=True (the default for live scoring) rejects an application that looks mis-entered; strict=False repairs it the way the
+        contract repairs historical data."""
+        frame = self.frame(record, strict=strict)
         p = float(self.bundle.score(frame)[0])
         return {"pd": round(p, 4), "decision": str(policy.decide([p], self.bundle.thresholds)[0]), "model_version": self.model_version,
                 "reason_codes": self.reasons(frame)}

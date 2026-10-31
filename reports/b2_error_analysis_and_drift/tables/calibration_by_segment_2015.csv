@@ -1,0 +1,46 @@
+segment,level,loans,predicted,observed,gap,p_value,holm_p,verdict
+grade,F,323,0.4119,0.4985,0.0865,0.0018,0.0533,calibrated
+grade,E,1172,0.349,0.4275,0.0784,0.0,0.0,under-predicts risk
+job_group,missing,968,0.1865,0.2562,0.0697,0.0,0.0,under-predicts risk
+purpose_group,other_purpose,668,0.1739,0.2425,0.0687,0.0,0.0003,under-predicts risk
+grade,D,2263,0.2643,0.323,0.0587,0.0,0.0,under-predicts risk
+job_group,trades_transport_labor,1740,0.2078,0.2477,0.0399,0.0001,0.0021,under-predicts risk
+purpose_group,other,808,0.1786,0.2178,0.0393,0.0044,0.1223,calibrated
+job_group,healthcare,1031,0.18,0.2134,0.0334,0.0066,0.177,calibrated
+job_group,executive_owner,1793,0.1598,0.1907,0.031,0.0005,0.0168,under-predicts risk
+verification_status,Verified,4612,0.2181,0.2483,0.0302,0.0,0.0,under-predicts risk
+purpose_group,home_improvement,937,0.1461,0.1761,0.0299,0.0109,0.2623,calibrated
+job_group,professional_technical,1878,0.1715,0.1422,-0.0294,0.0006,0.0199,over-predicts risk
+loan_band,loan Q4,3455,0.2068,0.2362,0.0294,0.0,0.001,under-predicts risk
+grade,A,2970,0.0775,0.0498,-0.0276,0.0,0.0,over-predicts risk
+term,60,3844,0.3387,0.3639,0.0252,0.0011,0.0341,under-predicts risk
+income_band,90k+,3883,0.147,0.1707,0.0237,0.0,0.0017,under-predicts risk
+job_group,other_job,1998,0.1989,0.2222,0.0233,0.0099,0.248,calibrated
+home_ownership_group,OWN,1708,0.1843,0.2067,0.0224,0.0192,0.3855,calibrated
+region,Northeast,3152,0.1835,0.2059,0.0224,0.0014,0.0414,under-predicts risk
+fico_band,680-700,4283,0.2014,0.2237,0.0223,0.0003,0.0119,under-predicts risk
+home_ownership_group,RENT,6361,0.2091,0.2286,0.0195,0.0002,0.0057,under-predicts risk
+loan_band,loan Q2,3593,0.1858,0.2029,0.0171,0.0089,0.2309,calibrated
+grade,C,4321,0.2053,0.2203,0.015,0.0151,0.3448,calibrated
+income_band,under 40k,2963,0.2159,0.2295,0.0136,0.0741,1.0,calibrated
+fico_band,700-730,3638,0.154,0.1674,0.0134,0.0259,0.4917,calibrated
+region,Midwest,2784,0.194,0.2073,0.0133,0.0802,1.0,calibrated
+income_band,40-60k,4276,0.2036,0.2168,0.0132,0.0334,0.6012,calibrated
+region,South,5682,0.1871,0.1998,0.0127,0.015,0.3448,calibrated
+fico_band,730+,1904,0.088,0.1003,0.0123,0.0626,1.0,calibrated
+loan_band,loan Q3,4336,0.2147,0.2256,0.0109,0.0821,1.0,calibrated
+term,36,11783,0.1373,0.1477,0.0104,0.0011,0.0354,under-predicts risk
+purpose_group,debt_consolidation,9066,0.2072,0.2173,0.0101,0.0184,0.3855,calibrated
+region,West,4009,0.1841,0.1941,0.01,0.1031,1.0,calibrated
+fico_band,under 680,5802,0.2291,0.238,0.0089,0.1076,1.0,calibrated
+verification_status,Not Verified,4241,0.1372,0.145,0.0078,0.1408,1.0,calibrated
+home_ownership_group,MORTGAGE,7558,0.1687,0.1762,0.0076,0.0799,1.0,calibrated
+verification_status,Source Verified,6774,0.1966,0.2036,0.007,0.1508,1.0,calibrated
+income_band,60-90k,4505,0.1861,0.1929,0.0068,0.2429,1.0,calibrated
+grade,B,4497,0.1395,0.1339,-0.0057,0.282,1.0,calibrated
+job_group,sales_service_office,2092,0.1993,0.2027,0.0034,0.7016,1.0,calibrated
+job_group,education,697,0.1778,0.1808,0.003,0.8429,1.0,calibrated
+job_group,manager_supervisor,2989,0.1863,0.184,-0.0023,0.7601,1.0,calibrated
+loan_band,loan Q1,4243,0.143,0.1452,0.0022,0.677,1.0,calibrated
+job_group,public_safety_government,441,0.1995,0.1973,-0.0022,0.9525,1.0,calibrated
+purpose_group,credit_card,3870,0.1559,0.1574,0.0015,0.7904,1.0,calibrated
