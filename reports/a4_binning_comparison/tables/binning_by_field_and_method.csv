@@ -45,7 +45,7 @@ inq_last_6mths_capped,quantile_10,4,20.7789,0.0298,0.0319,True,True
 inq_last_6mths_capped,monotonic_merge,3,8.2174,0.0313,0.0313,True,True
 inq_last_6mths_capped,tree_6,4,8.2174,0.0313,0.0312,False,True
 mort_acc_capped,quantile_10,7,8.1746,0.0184,0.0205,False,True
-mort_acc_capped,monotonic_merge,1,100.0,0.0,0.0,True,True
+mort_acc_capped,monotonic_merge,5,7.8322,0.019,0.0218,True,True
 mort_acc_capped,tree_6,6,5.0824,0.02,0.0204,False,False
 open_acc,quantile_10,10,5.8421,0.0097,0.0064,False,False
 open_acc,monotonic_merge,4,5.8421,0.0074,0.0113,True,True
@@ -60,10 +60,10 @@ num_tl_op_past_12m,quantile_10,6,12.9467,0.0393,0.0547,True,True
 num_tl_op_past_12m,monotonic_merge,5,12.9467,0.0393,0.0547,True,True
 num_tl_op_past_12m,tree_6,5,12.9467,0.0393,0.0547,True,True
 mths_since_last_delinq,quantile_10,10,4.9219,0.0045,0.0036,False,False
-mths_since_last_delinq,monotonic_merge,2,8.1318,0.0013,0.001,True,True
+mths_since_last_delinq,monotonic_merge,3,2.7819,0.0039,0.0034,True,True
 mths_since_last_delinq,tree_6,6,2.7605,0.0115,0.0024,False,False
 emp_length_years,quantile_10,8,3.8626,0.0218,0.001,False,False
-emp_length_years,monotonic_merge,1,4.6758,0.0019,0.0009,True,True
+emp_length_years,monotonic_merge,3,4.6758,0.0186,0.0032,True,False
 emp_length_years,tree_6,6,4.6758,0.0214,0.0012,False,False
 int_rate,quantile_10,10,8.1104,0.3829,0.5173,True,False
 int_rate,monotonic_merge,12,5.0289,0.3912,0.5248,True,False

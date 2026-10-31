@@ -8,7 +8,7 @@
     "2013-01-01",
     "2014-12-01"
   ],
-  "git_commit": "e80b02742e30438119d5540c13e789d87427d53c",
+  "git_commit": "2826c2d37daebec6bc5ed0f38fac1ee9dc8aa195",
   "git_dirty": true,
   "training_data_hash": "4ff160121523e1936f71e23824207c51c881b5e92af3db7e8e5385c85708fc44",
   "training_date": "2026-10-31",
@@ -19,21 +19,21 @@
   },
   "calibration_brier_cross_check": {
     "36": {
-      "platt": 0.11178523602938772,
-      "isotonic": 0.11213824685477322
+      "platt": 0.11176921590787797,
+      "isotonic": 0.11227659435304685
     },
     "60": {
-      "platt": 0.19875249272502954,
-      "isotonic": 0.2002953286265196
+      "platt": 0.19867591403131918,
+      "isotonic": 0.2000332120099882
     }
   },
   "fold_auc": [
-    0.6849,
-    0.7127
+    0.6866,
+    0.7107
   ],
   "fold_brier": [
-    0.1303,
-    0.1407
+    0.1302,
+    0.1408
   ],
   "inputs": [
     "annual_inc_log_woe",
@@ -70,12 +70,12 @@
     "verification_status_woe",
     "term_woe"
   ],
-  "run_id": "20261031-130220",
+  "run_id": "20261031-202935",
   "thresholds": {
     "approve_below": 0.0625,
     "decline_at_or_above": 0.125
   },
-  "reference_group": "1,549 training loans the model approves",
+  "reference_group": "1,540 training loans the model approves",
   "inputs_used": [
     "annual_inc_log_woe",
     "loan_amnt_log_woe",
@@ -89,7 +89,6 @@
     "bc_util_treated_woe",
     "delinq_2yrs_capped_woe",
     "inq_last_6mths_capped_woe",
-    "mort_acc_capped_woe",
     "open_acc_woe",
     "total_acc_woe",
     "acc_open_past_24mths_woe",
@@ -110,12 +109,13 @@
   ],
   "inputs_dropped_for_wrong_sign": [
     "revol_bal_log_woe",
+    "mort_acc_capped_woe",
     "pub_rec_capped_woe",
     "pub_rec_bankruptcies_capped_woe"
   ],
   "selection": {
     "lightgbm_mean_auc": 0.6981188777958693,
-    "scorecard_mean_auc": 0.6988245094109649,
+    "scorecard_mean_auc": 0.6986245577812769,
     "chosen_input_set": "raw",
     "monotone_cost_auc": -0.009633147516213025,
     "monotone_declared": 22,
@@ -150,9 +150,9 @@
       "both": 0.6995
     },
     "ablation_logistic": {
-      "woe_only": 0.6988,
+      "woe_only": 0.6986,
       "factors_plus_category_woe": 0.6975,
-      "woe_plus_factors": 0.6972
+      "woe_plus_factors": 0.6955
     },
     "grade_alone_auc": 0.697310580514792
   }

@@ -1,23 +1,23 @@
 scenario,result,pd,change_vs_base,decision,message
-nothing changed,scored,0.0921,0.0,review,
-employer title missing,scored,0.0921,0.0,review,
-employment length missing,scored,0.0975,0.0054,review,
-no months since last delinquency,scored,0.0898,-0.0023,review,
-bank-card utilisation missing,scored,0.107,0.0149,review,
-revolving utilisation missing,scored,0.0925,0.0004,review,
-credit start date missing,scored,0.0904,-0.0017,review,
+nothing changed,scored,0.0907,0.0,review,
+employer title missing,scored,0.0907,0.0,review,
+employment length missing,scored,0.0986,0.0079,review,
+no months since last delinquency,scored,0.0887,-0.002,review,
+bank-card utilisation missing,scored,0.1056,0.0149,review,
+revolving utilisation missing,scored,0.0914,0.0007,review,
+credit start date missing,scored,0.0897,-0.001,review,
 income in thousands (58),rejected with a clear message,,,,"annual_inc is below 1,000 and looks like it was entered in thousands"
-income $5 million,scored,0.0622,-0.0299,approve,
-debt-to-income 120,scored,0.1084,0.0163,review,
-revolving utilisation 400%,scored,0.0939,0.0018,review,
+income $5 million,scored,0.0624,-0.0283,approve,
+debt-to-income 120,scored,0.107,0.0163,review,
+revolving utilisation 400%,scored,0.0935,0.0028,review,
 FICO low above high,rejected with a clear message,,,,fico_range_low is above fico_range_high
-state written in full,scored,0.0921,0.0,review,
-date as 2015-06-01,scored,0.0921,0.0,review,
-zip code of an unseen area,scored,0.0921,0.0,review,
+state written in full,scored,0.0907,0.0,review,
+date as 2015-06-01,scored,0.0907,0.0,review,
+zip code of an unseen area,scored,0.0907,0.0,review,
 loan amount 10x too large,rejected with a clear message,,,,'loan_amnt': 1 value(s) outside 1000 to 40000 (e.g. 150000)
 term 48 months (not offered),rejected with a clear message,,,,"'term': 1 value(s) not allowed (e.g. np.int64(48)); allowed: [36, 60]"
 loan amount $500 (below product minimum),rejected with a clear message,,,,'loan_amnt': 1 value(s) outside 1000 to 40000 (e.g. 500)
 income negative,rejected with a clear message,,,,'annual_inc': 1 value(s) outside 1000 to 10000000 (e.g. -1000)
-utilisation sent as a fraction (0.55),scored,0.0897,-0.0024,review,
+utilisation sent as a fraction (0.55),scored,0.0871,-0.0036,review,
 required field removed (annual_inc),rejected with a clear message,,,,missing required field 'annual_inc'
 loan amount sent as text,rejected with a clear message,,,,'loan_amnt' must be a number (got 'abc')
