@@ -179,32 +179,36 @@ Everything is fitted on loans up to 2014-12-31; a test checks that 2015 loans do
 
 ## Job titles (`emp_title`)
 
-**Problem.** After cleaning, the fit window has 13,549 titles with 8,157 distinct values; 7,082 appear once. The
-20, 50 and 200 most common titles cover only 13%, 19% and 30% of loans, so a code per title is unusable.
+**The field changed meaning in October 2013.** The stability analysis (PSI 2.3 across that date, nothing else comes close)
+led to the titles themselves: until September 2013 about 60% of them are employer names ("state farm insurance companies",
+"at&t", "holiday inn express"); from October 2013 they are job titles ("teacher", "registered nurse"). The share of titles no
+keyword rule can place drops from about 62% to 13% in one month. Loans before October 2013 therefore get their own group,
+`employer_name_era`, instead of being mixed into the job groups, and the grouping experiment below uses only loans from October 2013.
 
-**Compared** (`scripts/a4_emp_title_grouping.py`): keyword groups, the N most common titles (20, 50, 200), and
-only a missing flag. Each is judged by IV on the loans it was learned from (up to mid-2014) and on later loans
-(second half of 2014) using the WoE learned earlier, because more groups always look better in-sample.
+**Problem.** Titles are extremely scattered: the 20, 50 and 200 most common titles leave 78%, 70% and 56% of loans in an "other"
+level, so a code per title is unusable.
+
+**Compared** (`scripts/a4_emp_title_grouping.py`, loans from October 2013 to 2014): keyword groups, the N most common titles
+(20, 50, 200), and only a missing flag. IV is shown on the loans it was learned from (up to mid-2014) and on later loans (second
+half of 2014) using the WoE learned earlier, because more groups always look better in-sample.
 
 | Option | Groups | Smallest group | IV learned on | IV on later loans |
 |---|---|---|---|---|
-| Keyword groups | 10 | 439 loans | 0.0145 | 0.0153 |
-| Top 20 titles | 22 | 23 | 0.0187 | 0.0208 |
-| Top 50 titles | 52 | 11 | 0.0465 | 0.0287 |
-| Top 200 titles | 202 | 4 | 0.1195 | 0.0381 |
-| Missing flag only | 2 | 575 | 0.0012 | 0.0006 |
+| Keyword groups | 10 | 200 loans | 0.0296 | 0.0130 |
+| Top 20 titles | 22 | 23 | 0.0306 | 0.0211 |
+| Top 50 titles | 52 | 10 | 0.0695 | 0.0252 |
+| Top 200 titles | 202 | 3 | 0.1884 | 0.0385 |
+| Missing flag only | 2 | 360 | 0.0023 | 0.0009 |
 
 **Choice: keyword groups.** Eight occupation groups from keyword rules (first match wins, order in
-`src/credit_risk/categorical.py`), plus `other_job` and `missing`. They are stable between training and later
-loans, every group is large, and each can be explained to a credit officer. The top-200 option is the textbook
-overfit: IV of 0.12 on its own training loans falls to 0.04 on later ones, with groups of 4 loans.
+`src/credit_risk/categorical.py`) plus `other_job` (13% of loans), `missing` and `employer_name_era`. Honestly stated: individual
+common titles carry a little more out-of-time signal (0.039 for the top 200) than the groups (0.013), but at the price of 202
+groups with as few as 3 loans, whose WoE is mostly noise (IV 0.19 on the loans it was learned from, 0.04 on later ones). The keyword
+groups give up some signal for stability, size (every group has at least 200 loans) and the ability to explain them to a credit
+officer. Their IV also halves out of time (0.030 to 0.013), so even that figure is optimistic.
 
-**What job title is worth.** Little. IV is about 0.015, which is below the 0.02 line for a useful field.
-Default rates run from 13.9% (professional and technical) to 19.9% (trades, transport and labour); the
-spread is real but small. The group stays in the contract because it is cheap and explainable, but we
-should not expect it to carry the model.
-The 32% in `other_job` is a long tail of company names and one-off titles (Wells Fargo, Walmart, UPS).
-Evidence: `reports/a4_emp_title_grouping/`.
+**What job title is worth.** Little: IV is about 0.013 on later loans, below the 0.02 line for a useful field. Default rates run
+from 14.1% (professional and technical) to 20.1% (trades, transport and labour). Evidence: `reports/a4_emp_title_grouping/`.
 
 **Job group is restricted, not a default model input.** Occupation can stand in for characteristics the data does
 not contain (sex, age, ethnicity), which would be indirect discrimination, and we cannot test for it because
@@ -388,3 +392,85 @@ noise aside. That gives factors that stand for something a credit officer can na
 burden), and it fits this problem because decisions must be explainable and several fields (`delinq_2yrs`, `inq_last_6mths`) are
 mostly their own noise. So the factors serve explanation and the scorecard, and the PCA components are kept as the compact
 alternative; the ablation in the ML half reports which of the two, if either, adds anything beyond the raw fields.
+
+## Stability and risk insights
+
+### Stability, 2013 against 2014 (`scripts/a6_stability_psi.py`, `reports/a6_stability_psi/`)
+PSI (Population Stability Index) measures how much a field's distribution moved: under 0.1 stable, 0.1 to 0.25 moderate,
+0.25 or more major. Bins are set on the earlier year. 45 fields and category sets were checked, including all 8 factor scores.
+- **43 of 45 are stable.** All factor scores are stable (0.006 to 0.033), so the factors describe 2014 applicants the way they
+  describe 2013 ones. The next period is similar: only the platform's own `int_rate` moves between 2014 and 2015 (PSI 0.19,
+  moderate), which means the platform changed how it prices, another reason not to depend on it.
+- **`job_group` (6.3): a data change, now repaired.** The title field changed meaning in October 2013 (see "Job titles"). Within
+  the valid period (October to December 2013 against 2014) PSI is 0.015, so after the repair the groups are stable. The 6.3 is the
+  `employer_name_era` label itself.
+- **`verification_status` (0.23, moderate): a real policy change.** "Verified" fell from 55% of loans in early 2013 to 23% by
+  mid-2014 and "Source Verified" rose from 14% to 45%. The field stays a candidate input but is flagged for monitoring, since the
+  link between verification and default may not hold as the policy moves.
+
+### Default rate by factor score (`scripts/a6_deciles_and_segments.py`, `reports/a6_deciles_and_segments/`)
+Deciles of each factor score, 95% Wilson intervals, a Cochran-Armitage trend test and a Mann-Whitney test, with Holm correction for
+testing 8 factors. Loans to 2014.
+
+| Factor | Default rate, decile 1 to 10 | Trend z | Holm p | AUC alone |
+|---|---|---|---|---|
+| `recent_account_opening` | 9.7% to 26.3% | +13.9 | below 0.001 | 0.588 |
+| `debt_burden` | 11.3% to 22.3% | +10.7 | below 0.001 | 0.569 |
+| `revolving_utilization` | 12.3% to 21.1% | +9.4 | below 0.001 | 0.562 |
+| `credit_capacity` | 19.4% to 10.5% | -9.3 | below 0.001 | 0.559 |
+| `loan_size` | 12.9% to 22.4% | +7.0 | below 0.001 | 0.546 |
+| `revolving_credit_size` | 21.1% to 13.5% | -5.3 | below 0.001 | 0.534 |
+| `account_count` | 16.3% to 18.4% | +2.4 | 0.033 | 0.516 |
+| `public_records` | 17.3% to 17.7% | -2.3 | 0.033 | 0.515 |
+
+Six factors show a clear, steady trend in the direction credit logic expects (more recent borrowing, more debt relative to income,
+higher utilization and larger loans mean more default; more capacity and larger revolving limits mean less). `account_count` and
+`public_records` are statistically detectable but practically negligible (a 2-point or 0.4-point range): we do not claim they
+separate risk.
+
+### Segments, with a rule against small groups
+A level is called a real difference only if it has at least 300 loans and its test against all other loans survives Holm correction
+within that segmentation; otherwise the finding is "no clear difference" or "too few loans to say". Notable results:
+- **Term:** 36 months 13.2%, 60 months 28.3% (the 60-month figure is inflated by the in-progress-loan bias in the target analysis).
+- **Grade:** A 4.5%, B 10.8%, C 19.0%, D 24.6%, E 33.2%, F 38.2%; G (93 loans, 48.4%) is too few to say.
+- **Purpose:** credit card 14.6% (safer), debt consolidation 18.2% (riskier).
+- **Home ownership:** mortgage 15.4%, rent 19.8%. **Income:** lowest fifth 21.3%, highest fifth 13.2%. **Loan size:** smallest fifth 14.1%, largest 20.1%.
+- **Verification:** not verified 12.7%, source verified 19.0%, verified 19.3% (the platform's verification choice, not a safety signal).
+- **Job group:** only professional and technical differs (14.1%, safer); 10 other groups show no clear difference. **Year:** 2013 16.0%, 2014 18.0% (affected by the in-progress bias).
+- **State:** none of the 17 states with at least 300 loans differs significantly from the rest after correction (overall chi-square p = 0.038);
+  15 smaller states are "too few loans to say".
+
+### What the factors add beyond the platform's grade (`scripts/a6_factors_vs_grade.py`)
+On later loans (time-ordered folds before 2015), AUC: sub-grade alone 0.697, factors alone 0.652, sub-grade plus factors 0.706. The
+paired gain from adding the factors is +0.010 and +0.007 in the two folds, with intervals that touch zero (-0.003 to +0.021), so a
+better overall ranking is not proven. Within a grade band, though, the factors separate loans clearly (default rate, lowest against
+highest third of factor-based risk, with non-overlapping intervals): grades A-B 7.4% against 13.1%; C 14.1% against 25.8%; D-G 25.8%
+against 41.6%. The factors therefore carry risk information the grade does not fully use, but the grade already captures most of the
+ranking and the factors correlate with it (utilization 0.33, recent account opening 0.27), so the overall gain is small. The
+factors serve as an explanation and a cross-check, not a replacement.
+
+### Could zip code or state act as a proxy for protected characteristics? (`scripts/a6_location_proxy.py`)
+The data holds no race, sex or age, so a proxy cannot be measured directly, and that is the problem rather than a reassurance.
+Location in the United States is strongly tied to the racial, ethnic and age make-up of neighbourhoods, so using it can reproduce
+those differences even when the model never sees them. What the data does show:
+- **It is too sparse to use:** 803 distinct 3-digit zip prefixes with a median of 10 loans each; 82% of prefixes (43.5% of loans) have under 30 loans.
+- **It carries a little socio-economic signal:** state explains 0.8% of the variation in income (small, but not chance: p below 1e-20); median income runs from $59k to $75k across states.
+- **It adds nothing to predictions, and hurts:** adding the state's WoE lowers the AUC on later loans in both folds (-0.009 and -0.007; intervals exclude zero).
+- **Default does not differ reliably by state** (see segments above).
+
+**Recommendation.** Do not use `zip_code` at all. Do not use `addr_state` as a model input. Keep state for monitoring only: compare approval,
+default and calibration by state and region in the ML half (the brief asks for it), where a gap would be a warning to investigate. With
+demographic data (not available here) a proper disparate-impact test would be the next step. Because location is sparse, uninformative and
+risky, the model gives up nothing by excluding it.
+
+### How training only on accepted loans limits these findings
+Every loan here was approved by the platform and then ran to a final outcome, so the model learns the default rate among applicants the
+platform had already chosen to accept, not among everyone who applies. People the platform would have declined, who are likely riskier, never
+appear: no borrower in the data has a FICO score below 660, so nothing is known about lower scores, and the model can say nothing reliable
+there. The relationships we measure are probably weaker than they would be in the full applicant pool, because the platform's own acceptance
+rules already removed the extremes of the fields it used (score, `dti`, income), and a model trained here will look better calibrated and more
+stable than it would on the people who actually apply. PD thresholds set on these default rates are therefore valid only for applicants who resemble
+accepted ones. Declined applicants' outcomes cannot be observed, so the remedies are partial: restrict decisions to the range the data covers,
+monitor the applicant mix, and, if the platform keeps declined applications, apply reject-inference methods or run small controlled approvals
+of borderline applicants to learn what happens outside the accepted region. The label has a second selection effect, covered in the target analysis:
+unfinished loans were removed, which inflates recent 60-month default rates.

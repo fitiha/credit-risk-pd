@@ -18,7 +18,10 @@ JOB_RULES = [
     ("sales_service_office", r"sales|representative|\brep\b|agent|clerk|customer|service|assistant|secretary|receptionist|teller|cashier|associate|support|advisor|broker|\badmin|office|banker|\bbank\b|specialist|server|clerical|retail|bartender|attendant"),
 ]
 _COMPILED = [(name, re.compile(pattern)) for name, pattern in JOB_RULES]
-JOB_GROUPS = [name for name, _ in JOB_RULES] + ["other_job", "missing"]
+JOB_GROUPS = [name for name, _ in JOB_RULES] + ["other_job", "missing", "employer_name_era"]
+# Until September 2013 the field mostly holds employer names ("state farm insurance", "at&t"), not job titles;
+# from October 2013 it holds job titles. Earlier loans get their own group instead of being mixed in.
+JOB_TITLE_ERA_START = pd.Timestamp("2013-10-01")
 
 
 def job_group(title):
@@ -102,6 +105,8 @@ class CategoryGrouper(BaseEstimator, TransformerMixin):
     def transform(self, X):
         d = X.copy()
         d["job_group"] = group_job_titles(d["emp_title"]).to_numpy()
+        employer_era = (d["issue_d"] < JOB_TITLE_ERA_START) & d["emp_title"].notna()
+        d.loc[employer_era, "job_group"] = "employer_name_era"
         d["emp_length_years"] = order_emp_length(d["emp_length"]).to_numpy()
         for f, m in self.mergers_.items():
             d[f"{f}_group"] = m.transform(d[f]).to_numpy()

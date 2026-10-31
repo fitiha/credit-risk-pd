@@ -10,7 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from credit_risk.categorical import group_job_titles
+from credit_risk.categorical import JOB_TITLE_ERA_START, group_job_titles
 from credit_risk.cleaning import Cleaner
 from credit_risk.io import FIT_CUTOFF, load_applications
 from credit_risk.reporting import fresh_dirs
@@ -20,7 +20,8 @@ from credit_risk.woe import information_value, iv_on_new_data, woe_table
 FIG, TAB = fresh_dirs("a4_emp_title_grouping")
 raw = load_applications()
 d = Cleaner().fit(raw).transform(raw)
-fit = d[d.issue_d <= FIT_CUTOFF].reset_index(drop=True)
+# The field holds employer names before October 2013 (see the stability analysis), so only later loans are used here.
+fit = d[(d.issue_d >= JOB_TITLE_ERA_START) & (d.issue_d <= FIT_CUTOFF)].reset_index(drop=True)
 train, test = fit[fit.issue_d <= "2014-06-30"], fit[fit.issue_d > "2014-06-30"]
 
 

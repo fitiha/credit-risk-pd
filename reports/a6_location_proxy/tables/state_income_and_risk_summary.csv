@@ -1,0 +1,8 @@
+measure,value
+states with at least 300 loans,16
+share of income variation explained by state (eta squared),0.007974
+"Kruskal-Wallis p, income differs by state",7.277e-23
+"median income, highest state",7.5e+04
+"median income, lowest state",5.9e+04
+"default rate, highest state",0.2
+"default rate, lowest state",0.1342

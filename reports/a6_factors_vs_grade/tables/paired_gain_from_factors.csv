@@ -1,0 +1,3 @@
+fold,auc_gain,ci_low,ci_high
+fold 1,0.0101,-0.0026,0.0212
+fold 2,0.007,-0.0025,0.0161
