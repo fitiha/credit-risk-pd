@@ -100,6 +100,14 @@ class Cleaner(BaseEstimator, TransformerMixin):
         d["bc_util_invalid"] = bad_bc
         d.loc[bad_bc, "bc_util"] = np.nan
 
+        # issue 39: "0 months since the last delinquency" with no delinquency in the last two years is how the historical files
+        # code "none on record" (the 2016 holdout leaves it blank), so it becomes missing; a real zero (a delinquency this month,
+        # delinq_2yrs > 0) is kept
+        if {"mths_since_last_delinq", "delinq_2yrs"} <= set(d.columns):
+            zero_code = (d["mths_since_last_delinq"] == 0) & (d["delinq_2yrs"] == 0)
+            d["mths_since_last_delinq_recoded"] = zero_code
+            d.loc[zero_code, "mths_since_last_delinq"] = np.nan
+
         # issue 19: placeholder interest rate -> median of the sub_grade
         ph = d["int_rate"] == self.placeholder_rate
         fill = d["sub_grade"].map(self.rate_by_subgrade_).fillna(d["grade"].map(self.rate_by_grade_))
@@ -119,6 +127,7 @@ class Cleaner(BaseEstimator, TransformerMixin):
             "bc_util": "negative values: set to missing, indicator added",
             "fico_range": "low and high swapped when low > high",
             "earliest_cr_line": "later than issue_d: set to missing, indicator added",
+            "mths_since_last_delinq": "0 with no delinquency in the last two years is the historical coding of 'none on record': set to missing, indicator added",
             "median_int_rate_by_sub_grade": self.rate_by_subgrade_,
         }
 

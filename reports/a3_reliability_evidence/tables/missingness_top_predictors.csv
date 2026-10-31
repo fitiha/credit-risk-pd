@@ -9,11 +9,11 @@ emp_length,2,verification_status_Verified,1.266
 emp_length,3,annual_inc,-0.962
 emp_length,4,int_rate,-0.467
 emp_length,5,verification_status_Source Verified,0.37
-mths_since_last_delinq,1,delinq_2yrs,-3.144
-mths_since_last_delinq,2,fico_range_low,0.706
-mths_since_last_delinq,3,total_acc,-0.463
-mths_since_last_delinq,4,revol_bal,0.419
-mths_since_last_delinq,5,int_rate,0.279
+mths_since_last_delinq,1,delinq_2yrs,-3.409
+mths_since_last_delinq,2,fico_range_low,0.89
+mths_since_last_delinq,3,total_acc,-0.536
+mths_since_last_delinq,4,revol_bal,0.465
+mths_since_last_delinq,5,int_rate,0.347
 bc_util,1,open_acc,-1.632
 bc_util,2,total_acc,0.61
 bc_util,3,dti,0.367

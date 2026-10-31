@@ -31,7 +31,7 @@ credit_history_months_treated,numeric,6,0.014,useless,input
 revol_bal_to_income_treated,numeric,5,0.0118,useless,input
 open_acc,numeric,7,0.0112,useless,input
 emp_length_years,numeric,5,0.0099,useless,input
-mths_since_last_delinq,numeric,4,0.0036,useless,input
+mths_since_last_delinq,numeric,6,0.004,useless,input
 revol_bal_log,numeric,6,0.0026,useless,input
 delinq_2yrs_capped,numeric,3,0.0024,useless,input
 total_acc,numeric,3,0.0012,useless,input

@@ -42,7 +42,7 @@ Of the 38 rated fields known at application time:
 | `fico_range_high` | credit_bureau | high | model input | Bureau score. Swapped with the low value in 150 loans; repaired. |
 | `inq_last_6mths` | credit_bureau | high | model input | Bureau count; no errors found. |
 | `delinq_2yrs` | credit_bureau | high | model input | Bureau count; no errors found; mostly zero, long tail capped. |
-| `mths_since_last_delinq` | credit_bureau | medium | model input | Missing in 46% of loans, and structurally: 99.7% of the missing have no delinquency in the last two years, so missing means none on record. Not linked to default (16.7% vs 17.7%, p = 0.09). A few contradictions: missing although a delinquency was recorded in the last two years (18 loans in the fit window, 67 overall). |
+| `mths_since_last_delinq` | credit_bureau | medium | model input | Missing in 52% of fit-window loans after recoding (1,497 loans in the historical files carry 0 months with no delinquency in two years, the file's way of saying none on record), and structurally: 99.8% of the missing have no delinquency in the last two years, so missing means none on record. Not linked to default (16.7% vs 17.8%, p = 0.11). A few contradictions: missing although a delinquency was recorded in the last two years (18 loans in the fit window, 67 overall). |
 | `pub_rec` | credit_bureau | high | model input | Bureau count; no errors found. |
 | `pub_rec_bankruptcies` | credit_bureau | high | model input | Bureau count; no errors found. |
 | `open_acc` | credit_bureau | high | model input | Bureau count; never above total_acc. |
@@ -85,7 +85,7 @@ outcome (any one of them alone predicts default with AUC 0.72 to 0.91, against 0
   income (0.36 to 0.43). The 3% of incomes typed in thousands occur equally in every group.
 - **Missing values are structural, not random, and not clearly linked to default.** Each can be predicted from other
   fields (AUC 0.80 to 0.87), and none differs significantly in default rate (all p-values above 0.09).
-  `mths_since_last_delinq` is missing when there is no delinquency on record (99.7% of the missing have none in
+  `mths_since_last_delinq` is missing when there is no delinquency on record (99.8% of the missing have none in
   two years). `emp_title` and `emp_length` are missing together and more often among verified applicants.
   `bc_util` is missing for borrowers with few open accounts.
 - **Verification is not a safety signal.** Verified loans default more (19% vs 13%), probably because the platform

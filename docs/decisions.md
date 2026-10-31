@@ -132,6 +132,22 @@ are over all 30,000 loans; caps are fitted on pre-2015 loans.
 | `bc_util` | 290 negative values set to missing with an indicator, because the sign flip cannot be proven (issue 14) | 590 loans above 100%, capped at 102.9 |
 | Count fields | None | Capped at the 99.5th percentile (0.1% to 0.4% of loans) |
 
+## How "no delinquency on record" is coded (`mths_since_last_delinq`)
+
+Found in the pre-contract review by comparing value counts of every numeric field between the training files and the 2016 holdout.
+In the training files `mths_since_last_delinq` is exactly 0 for 1,535 loans (5.1%), against 103 loans at 1 month and a smooth climb after
+that; the holdout has 4 zeros in 5,000. Of the zeros, 1,497 (97.5%) report no delinquency in the last two years, which makes "0 months since
+the last delinquency" impossible, and they resemble the missing group in every other field (mean `delinq_2yrs` 0.05 against 0.01, FICO
+701.8 against 702.3) and not the genuine 1 to 24 month group (1.58 and 682). So the historical files code "none on record" two ways, blank
+and 0, while the holdout uses blank only. The same coding difference was behind the moderate PSI (0.109) the holdout drift report showed for
+this field.
+
+**Rule:** `mths_since_last_delinq` equal to 0 with `delinq_2yrs` equal to 0 becomes missing, with an indicator
+(`mths_since_last_delinq_recoded`, 1,497 loans, 759 in the fit window). A zero with `delinq_2yrs` above 0 (38 loans, a delinquency this month)
+is real and kept. Live scoring recodes silently and does not reject the application, since this is a coding convention of the historical files and
+not an input error. The field is weak either way (IV 0.004), so predictive accuracy barely moves; the gain is consistency between training and
+scoring, and a drift alert that now reflects behaviour and not coding. A scan of all 25 numeric fields found no other coding spike.
+
 ## Platform's own score (`grade`, `sub_grade`, `int_rate`) as model inputs
 
 **Question.** These are known at application time, but they are outputs of the platform's existing risk
@@ -324,7 +340,7 @@ set, so the strongest legitimate fields are `fico_mid`, `loan_to_income` and the
 **Fields used** (`src/credit_risk/factor_fields.py`): 21 treated numeric fields: seven money fields (log), `dti`, `revol_util`,
 `bc_util`, five capped counts, four bureau counts, `fico_mid` and credit history length. Left out on purpose: the platform's
 score (not a model input); restricted fields; ratio features built from other included fields (74% to 89% of each is already
-explained by the included fields, R-squared in `reports/a5_factor_robustness/`); `mths_since_last_delinq` (46% missing by
+explained by the included fields, R-squared in `reports/a5_factor_robustness/`); `mths_since_last_delinq` (52% missing by
 construction, with no honest numeric fill); categorical fields (handled through WoE); and `tot_cur_bal` (see below). Everything
 is fitted on the 14,373 loans up to the fit cutoff.
 

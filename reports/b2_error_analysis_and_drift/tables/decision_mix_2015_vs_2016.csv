@@ -1,5 +1,5 @@
 item,2015 validation,2016 holdout
-approve,0.1146,0.1168
-review,0.2722,0.2842
-decline,0.6132,0.599
-mean PD,0.1867,0.1759
+approve,0.1154,0.1166
+review,0.2714,0.2814
+decline,0.6132,0.602
+mean PD,0.1868,0.177

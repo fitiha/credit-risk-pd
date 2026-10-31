@@ -9,11 +9,11 @@ factor_public_records,factor score,0.0307,0.0015,stable,stable
 revol_bal_log,numeric,0.0291,0.0031,stable,stable
 acc_open_past_24mths,numeric,0.0278,0.0088,stable,stable
 num_tl_op_past_12m,numeric,0.0271,0.012,stable,stable
+mths_since_last_delinq,numeric,0.0246,0.0034,stable,stable
 revol_util_treated,numeric,0.0241,0.0089,stable,stable
 revol_bal_to_income_treated,numeric,0.0225,0.005,stable,stable
 installment_log,numeric,0.02,0.0042,stable,stable
 factor_recent_account_opening,factor score,0.0197,0.0129,stable,stable
-mths_since_last_delinq,numeric,0.0196,0.0016,stable,stable
 recent_accounts_share_treated,numeric,0.0172,0.0152,stable,stable
 dti_treated,numeric,0.0171,0.0142,stable,stable
 loan_amnt_log,numeric,0.0168,0.0029,stable,stable

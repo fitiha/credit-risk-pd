@@ -59,9 +59,9 @@ acc_open_past_24mths,tree_6,6,9.1055,0.0572,0.0782,True,True
 num_tl_op_past_12m,quantile_10,6,12.9467,0.0393,0.0547,True,True
 num_tl_op_past_12m,monotonic_merge,5,12.9467,0.0393,0.0547,True,True
 num_tl_op_past_12m,tree_6,5,12.9467,0.0393,0.0547,True,True
-mths_since_last_delinq,quantile_10,10,4.9219,0.0045,0.0036,False,False
-mths_since_last_delinq,monotonic_merge,3,2.7819,0.0039,0.0034,True,True
-mths_since_last_delinq,tree_6,6,2.7605,0.0115,0.0024,False,False
+mths_since_last_delinq,quantile_10,10,4.1194,0.0042,0.0029,False,False
+mths_since_last_delinq,monotonic_merge,3,2.493,0.003,0.0036,True,False
+mths_since_last_delinq,tree_6,6,2.5251,0.0083,0.0,False,False
 emp_length_years,quantile_10,8,3.8626,0.0218,0.001,False,False
 emp_length_years,monotonic_merge,3,4.6758,0.0186,0.0032,True,False
 emp_length_years,tree_6,6,4.6758,0.0214,0.0012,False,False

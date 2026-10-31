@@ -52,7 +52,7 @@ outcome (any one of them alone predicts default with AUC 0.72 to 0.91, against 0
   income (0.36 to 0.43). The 3% of incomes typed in thousands occur equally in every group.
 - **Missing values are structural, not random, and not clearly linked to default.** Each can be predicted from other
   fields (AUC 0.80 to 0.87), and none differs significantly in default rate (all p-values above 0.09).
-  `mths_since_last_delinq` is missing when there is no delinquency on record (99.7% of the missing have none in
+  `mths_since_last_delinq` is missing when there is no delinquency on record (99.8% of the missing have none in
   two years). `emp_title` and `emp_length` are missing together and more often among verified applicants.
   `bc_util` is missing for borrowers with few open accounts.
 - **Verification is not a safety signal.** Verified loans default more (19% vs 13%), probably because the platform

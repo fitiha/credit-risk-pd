@@ -6,7 +6,7 @@ A probability-of-default (PD) model for unsecured personal loans, built in two p
 
 ## Results in five lines
 - 38 data problems found and fixed or flagged (`docs/issue_log.md`), including two columns that reveal the outcome and about 1,500 mis-scaled amounts; one unit error in the 2016 file would have corrupted every holdout score.
-- Out-of-time AUC on 2015 loans: scorecard 0.719, boosted challenger 0.725, platform grade alone 0.722. The independent model **matches the grade but does not measurably beat it**; allowing the grade as an input gives 0.732.
+- Out-of-time AUC on 2015 loans: scorecard 0.718, boosted challenger 0.725, platform grade alone 0.722. The independent model **matches the grade but does not measurably beat it**; allowing the grade as an input gives 0.731.
 - Predictions are well calibrated per term (slopes 0.96 and 1.02); thresholds from the profit assumptions: approve below 6.25%, decline at 12.5% or more.
 - The 2016 holdout is stable against 2015 (PSI 0.014 for the PD); scores are in `outputs/holdout_scores.csv`.
 - A scored application takes about 34 ms (limit 100 ms). The factor scores added no measurable signal over the raw fields; the ablation says so (`model_card.md`).
