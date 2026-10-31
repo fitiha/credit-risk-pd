@@ -33,7 +33,8 @@ spec = build_spec(tr)
 # 4. 50 raw rows with their expected transformed values: every kind of repair, missing pattern and unusual category, plus ordinary rows
 rng = np.random.default_rng(0)
 flags = {"loan amount 10x too large": "loan_amnt_fixed", "income in thousands": "annual_inc_fixed", "revolving balance 10x too large": "revol_bal_fixed",
-         "credit date after the loan": "earliest_cr_line_invalid", "negative bank-card utilisation": "bc_util_invalid", "placeholder interest rate": "int_rate_imputed"}
+         "credit date after the loan": "earliest_cr_line_invalid", "negative bank-card utilisation": "bc_util_invalid", "placeholder interest rate": "int_rate_imputed",
+         "zero months since delinquency coded for none on record": "mths_since_last_delinq_recoded"}
 pick = {}
 for why, col in flags.items():
     pick[why] = out.index[out[col]].to_numpy()

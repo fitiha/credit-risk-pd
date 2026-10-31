@@ -48,7 +48,7 @@ CATALOG = [
     _f("fico_range_high", BUR, True, "input", "high", "Bureau score. Swapped with the low value in 150 loans; repaired."),
     _f("inq_last_6mths", BUR, True, "input", "high", "Bureau count; no errors found."),
     _f("delinq_2yrs", BUR, True, "input", "high", "Bureau count; no errors found; mostly zero, long tail capped."),
-    _f("mths_since_last_delinq", BUR, True, "input", "medium", "Missing in 46% of loans, and structurally: 99.7% of the missing have no delinquency in the last two years, so missing means none on record. Not linked to default (16.7% vs 17.7%, p = 0.09). A few contradictions: missing although a delinquency was recorded in the last two years (18 loans in the fit window, 67 overall)."),
+    _f("mths_since_last_delinq", BUR, True, "input", "medium", "Missing in 52% of fit-window loans after recoding (1,497 loans in the historical files carry 0 months with no delinquency in two years, the file's way of saying none on record), and structurally: 99.8% of the missing have no delinquency in the last two years, so missing means none on record. Not linked to default (16.7% vs 17.8%, p = 0.11). A few contradictions: missing although a delinquency was recorded in the last two years (18 loans in the fit window, 67 overall)."),
     _f("pub_rec", BUR, True, "input", "high", "Bureau count; no errors found."),
     _f("pub_rec_bankruptcies", BUR, True, "input", "high", "Bureau count; no errors found."),
     _f("open_acc", BUR, True, "input", "high", "Bureau count; never above total_acc."),

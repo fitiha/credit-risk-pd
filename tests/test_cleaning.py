@@ -124,3 +124,13 @@ def test_cleaned_training_data_satisfies_the_accounting_identities():
     util = (100 * c.revol_bal / c.total_rev_hi_lim.where(c.total_rev_hi_lim > 0)) / c.revol_util.abs().where(c.revol_util.abs() > 1)
     assert util.between(8, 20).sum() == 0                                   # no loan left with a tenfold balance
     assert util.between(0.8, 1.25).mean() > 0.95                            # and the great majority agree with the reported utilisation
+
+
+def test_zero_months_since_delinquency_with_no_delinquency_means_none_on_record():
+    out = clean(row(mths_since_last_delinq=0.0, delinq_2yrs=0.0),     # coded zero, no delinquency in two years: becomes missing
+                row(mths_since_last_delinq=0.0, delinq_2yrs=2.0),     # a delinquency this month: a real zero, kept
+                row(mths_since_last_delinq=14.0, delinq_2yrs=1.0),    # ordinary value: kept
+                row(mths_since_last_delinq=np.nan, delinq_2yrs=0.0))  # already missing: stays missing
+    assert out["mths_since_last_delinq"].isna().tolist() == [True, False, False, True]
+    assert out["mths_since_last_delinq"].iloc[1] == 0.0 and out["mths_since_last_delinq"].iloc[2] == 14.0
+    assert out["mths_since_last_delinq_recoded"].tolist() == [True, False, False, False]
