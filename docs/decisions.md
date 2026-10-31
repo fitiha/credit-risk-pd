@@ -205,3 +205,10 @@ spread is real but small. The group stays in the contract because it is cheap an
 should not expect it to carry the model.
 The 32% in `other_job` is a long tail of company names and one-off titles (Wells Fargo, Walmart, UPS).
 Evidence: `reports/a4_emp_title_grouping/`.
+
+**Job group is restricted, not a default model input.** Occupation can stand in for characteristics the data does
+not contain (sex, age, ethnicity), which would be indirect discrimination, and we cannot test for it because
+those fields are absent. Its predictive value is small (IV about 0.015), so the cost of leaving it out is close to
+zero. The grouping stays in the data contract (the brief asks for it) and is available as a test variant; the
+fairness review (A7) discusses it together with `zip_code` and `addr_state`. `emp_length` is flagged in the same
+review, since length of employment tends to rise with age.
