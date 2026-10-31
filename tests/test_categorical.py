@@ -47,3 +47,36 @@ def test_min_group_size_is_reported():
 def test_emp_length_is_ordered_and_missing_stays_missing():
     out = order_emp_length(["< 1 year", "10+ years", "3 years", None])
     assert out.iloc[:3].tolist() == [0, 10, 3] and pd.isna(out.iloc[3])
+
+
+from credit_risk.categorical import CategoryGrouper
+
+
+def _loans():
+    n = 600
+    return pd.DataFrame({
+        "issue_d": pd.Timestamp("2014-03-01"),
+        "emp_title": ["teacher"] * 300 + [None] * 300, "emp_length": ["10+ years"] * 300 + ["< 1 year"] * 300,
+        "purpose": ["debt"] * 500 + ["car"] * 95 + ["wedding"] * 5, "home_ownership": ["RENT"] * 600,
+        "addr_state": ["CA"] * 590 + ["VT"] * 10, "application_type": ["Individual"] * 600,
+    })
+
+
+def test_category_grouper_adds_group_columns_and_merges_rare_levels():
+    df = _loans()
+    g = CategoryGrouper(min_share=0.02).fit(df)  # 2% of 600 = 12 loans
+    out = g.transform(df)
+    assert set(out.job_group) == {"education", "missing"}
+    assert out.emp_length_years.iloc[0] == 10 and out.emp_length_years.iloc[-1] == 0
+    assert set(out.purpose_group) == {"debt", "car", "other_purpose"}
+    assert out.addr_state_group.iloc[-1] == "other_addr_state"
+    assert out.purpose_group.iloc[-1] == "other_purpose"
+
+
+def test_category_grouper_ignores_2015_loans_and_maps_unseen_levels_to_other():
+    df = _loans()
+    later = df.assign(issue_d=pd.Timestamp("2015-06-01"), purpose="wedding")  # a 2015 surge must not keep 'wedding'
+    g = CategoryGrouper(min_share=0.02).fit(pd.concat([df, later], ignore_index=True))
+    assert "wedding" not in g.mergers_["purpose"].kept_
+    new = df.head(2).assign(purpose="brand_new")
+    assert g.transform(new).purpose_group.tolist() == ["other_purpose"] * 2

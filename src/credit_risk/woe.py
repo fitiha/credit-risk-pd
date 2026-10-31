@@ -54,3 +54,62 @@ def strength(iv):
         if iv < limit:
             return label
     return "suspicious"
+
+
+from sklearn.base import BaseEstimator, TransformerMixin
+
+from credit_risk.binning import assign_bins, fit_edges
+from credit_risk.io import FIT_CUTOFF
+
+
+class WoEEncoder(BaseEstimator, TransformerMixin):
+    """Adds `<field>_woe` columns. Bins and WoE values are learned on loans up to the fit cutoff only.
+
+    numeric fields are binned with monotonic merge (missing gets its own bin); categorical fields use
+    their levels as groups. Values never seen when fitting get WoE 0 (neutral).
+    """
+
+    def __init__(self, numeric=None, categorical=None, target="defaulted", min_share=0.05):
+        self.numeric = numeric
+        self.categorical = categorical
+        self.target = target
+        self.min_share = min_share
+
+    def fit(self, X, y=None):
+        pre = X[X["issue_d"] <= FIT_CUTOFF]
+        y = pre[self.target] if y is None else pd.Series(y, index=X.index).loc[pre.index]
+        self.edges_, self.tables_ = {}, {}
+        for f in self.numeric or []:
+            self.edges_[f] = fit_edges(pre[f], y, "monotonic", min_share=self.min_share)
+            self.tables_[f] = woe_table(assign_bins(pre[f], self.edges_[f]), y)
+        for f in self.categorical or []:
+            self.tables_[f] = woe_table(pre[f].fillna("missing"), y)
+        return self
+
+    def _groups(self, X, f):
+        if f in self.edges_:
+            return assign_bins(X[f], self.edges_[f])
+        return X[f].fillna("missing")
+
+    def transform(self, X):
+        d = X.copy()
+        for f, t in self.tables_.items():
+            d[f"{f}_woe"] = apply_woe(self._groups(d, f), t)
+        return d
+
+    def iv_table(self):
+        rows = [{"field": f, "kind": "numeric" if f in self.edges_ else "categorical", "bins_or_groups": len(t),
+                 "iv": information_value(t), "strength": strength(information_value(t))} for f, t in self.tables_.items()]
+        return pd.DataFrame(rows).sort_values("iv", ascending=False).reset_index(drop=True)
+
+    def spec_entries(self):
+        out = {}
+        for f, t in self.tables_.items():
+            out[f] = {"method": "monotonic_merge" if f in self.edges_ else "category_levels",
+                      "edges": [float(e) for e in self.edges_.get(f, [])],
+                      "bins": [{"label": str(r.group), "loans": int(r.loans), "default_rate": round(float(r.default_rate), 4),
+                                "woe": round(float(r.woe), 4)} for r in t.itertuples()],
+                      "iv": round(information_value(t), 4), "strength": strength(information_value(t)),
+                      "woe_convention": "ln(share repaid / share defaulted); positive = safer",
+                      "unseen_value_woe": 0.0}
+        return out

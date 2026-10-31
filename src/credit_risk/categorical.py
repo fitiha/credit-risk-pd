@@ -75,3 +75,37 @@ EMP_LENGTH_ORDER = {"< 1 year": 0, "1 year": 1, "2 years": 2, "3 years": 3, "4 y
 def order_emp_length(values):
     """Employment length as a number from 0 (under 1 year) to 10 (10+ years); missing stays missing."""
     return pd.Series(values).map(EMP_LENGTH_ORDER)
+
+
+from sklearn.base import BaseEstimator, TransformerMixin
+
+from credit_risk.io import FIT_CUTOFF
+
+MERGED_FIELDS = ["purpose", "home_ownership", "addr_state", "application_type"]
+
+
+class CategoryGrouper(BaseEstimator, TransformerMixin):
+    """Adds the grouped categorical columns that WoE is computed on.
+
+    `job_group` (keyword rules), `emp_length_years` (ordered), and `<field>_group` for purpose, home_ownership,
+    addr_state and application_type, where levels under `min_share` of the fit-window loans are merged.
+    """
+
+    def __init__(self, min_share=0.01):
+        self.min_share = min_share
+
+    def fit(self, X, y=None):
+        pre = X[X["issue_d"] <= FIT_CUTOFF]
+        self.mergers_ = {f: RareLevelMerger(f, self.min_share).fit(pre[f]) for f in MERGED_FIELDS}
+        return self
+
+    def transform(self, X):
+        d = X.copy()
+        d["job_group"] = group_job_titles(d["emp_title"]).to_numpy()
+        d["emp_length_years"] = order_emp_length(d["emp_length"]).to_numpy()
+        for f, m in self.mergers_.items():
+            d[f"{f}_group"] = m.transform(d[f]).to_numpy()
+        return d
+
+    def spec_entries(self):
+        return {f: m.spec_entry() for f, m in self.mergers_.items()}

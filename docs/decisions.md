@@ -239,3 +239,61 @@ spec needs it.
 Default rates are flat at 17% to 19% for 1 to 9 years, lower at 10+ years (15.5%), and higher for under 1 year
 (19.7%) and missing (19.5%). It is not a clean staircase, and its IV is 0.012, so it is binned into fewer
 steadier groups in the WoE step. Evidence: `reports/a4_rare_level_merging/`.
+
+## Binning numeric fields for WoE
+
+Compared on 30 numeric fields (`scripts/a4_binning_comparison.py`): ten equal-sized bins, equal-sized bins merged until
+the default rate moves in one direction with every bin at least 5% of loans ("monotonic merge"), and decision-tree
+bins (up to 6 leaves, each at least 5% of loans). Bins were learned on loans to mid-2014 and judged on later loans.
+
+| Method | Average bins | IV learned on | IV on later loans | Share of IV kept on later loans |
+|---|---|---|---|---|
+| Ten equal-sized bins | 8.7 | 0.047 | 0.049 | 105% |
+| Monotonic merge | 5.3 | 0.045 | 0.049 | 109% |
+| Tree, 6 leaves | 5.5 | 0.053 | 0.049 | 93% |
+
+**Choice: monotonic merge.** The three tie on later-loan IV, so the choice rests on stability and fit for a scorecard:
+fewest bins, no IV lost on later loans, a one-directional pattern by construction (a credit officer can read
+"higher means riskier"), and a minimum bin size of 5% of loans. Trees overfit the training window slightly; ten
+equal bins are needlessly fine. Missing values get their own bin. Bin edges are learned on the fit window and
+reused unchanged at scoring time.
+Note that a pattern that is one-directional on training loans is not always one-directional on the smaller later
+sample (43% of fields); with about 5,000 later loans, neighbouring bins differ by less than the noise.
+
+## Information value ranking and the "too good to be true" check
+
+`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 31 numeric and 8 categorical fields (bins and
+groups as decided above). Output: `reports/a4_iv_ranking/`.
+
+| Field | IV | Reading |
+|---|---|---|
+| `int_rate`, `grade` | 0.46, 0.45 | strong, close to the 0.5 line: the platform's own score |
+| `term` | 0.20 | medium |
+| `fico_mid`, `loan_to_income` | 0.11, 0.11 | medium: the strongest fields the model builds itself |
+| `recent_accounts_share`, `acc_open_past_24mths`, `installment_to_income`, `dti`, `num_tl_op_past_12m` | 0.06 to 0.09 | weak |
+| most other fields | under 0.05 | weak or useless; 17 of 39 fields are below 0.02 |
+
+**The only IV near the suspicious zone is the platform's own score, and it is not a leak.** `int_rate` has
+11 bins with a smooth, one-directional pattern, from 3.6% default in the lowest-rate bin (WoE +1.71) to 37.1% in
+the highest (WoE -1.04). It is strong because the platform's existing risk model set it from the same applicant
+data, so it is an echo of a model that already knew these fields. It is known at application time and consistent,
+so it is not target leakage, but it is the reason it is not a default model input (see the earlier decision).
+
+**What "too good to be true" looks like here.** The same calculation on fields recorded after the loan gives:
+
+| Field (post-issue) | IV |
+|---|---|
+| `bureau_recovery_flag` | 9.4 |
+| `recoveries` | 5.6 |
+| `last_fico_range_high` | 3.6 |
+| `last_pymnt_amnt` | 3.4 |
+| `total_rec_prncp` | 2.2 |
+| `total_pymnt` | 0.7 |
+
+Every one is above 0.5 by a wide margin. Any field of ours showing an IV in that range would be a leak; none does.
+A model on application-time fields should therefore be expected to reach only a modest AUC (around 0.70), and an
+AUC far above that would be a warning sign, not good news.
+
+**Two cautions.** `term` (IV 0.20) is partly affected by the in-progress-loan bias described in the target analysis,
+which inflates the default rate of recent 60-month loans. And `grade`/`int_rate` are kept out of the default input
+set, so the strongest legitimate fields are `fico_mid`, `loan_to_income` and the recent-borrowing fields.
