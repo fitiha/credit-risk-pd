@@ -105,5 +105,5 @@ def reason_text(column, value, reference=None):
         return f"{label}: not provided"
     text = f"{label}: {fmt(value)}"
     if reference is not None and not isinstance(reference, str) and not pd.isna(reference):
-        text += f" (typical applicant: {fmt(reference)})"
+        text += f" (typical approved applicant: {fmt(reference)})"
     return text

@@ -1,9 +1,9 @@
 what,p50_ms,p95_ms,p99_ms,max_ms
-"full predict(), low_risk",33.69,35.67,65.12,71.68
-"full predict(), borderline",33.59,34.99,64.15,65.3
-"full predict(), high_risk",33.74,35.95,66.42,79.96
-  step: input validation (raw),1.75,1.86,1.94,2.18
-  step: contract transform (cleaning ... WoE),22.14,23.06,53.49,56.43
-  step: validation of the cleaned values,7.62,8.11,8.29,8.69
-  step: score (model + calibration),0.59,0.69,0.76,0.92
-  step: reason codes,0.22,0.26,0.3,0.54
+"full predict(), low_risk",33.89,65.7,105.11,113.53
+"full predict(), borderline",33.57,60.43,82.5,104.06
+"full predict(), high_risk",32.73,39.58,67.95,75.83
+  step: input validation (raw),1.57,1.68,1.81,1.99
+  step: contract transform (cleaning ... WoE),20.6,42.93,53.67,66.37
+  step: validation of the cleaned values,7.05,8.24,15.79,34.33
+  step: score (model + calibration),0.55,0.59,0.66,0.96
+  step: reason codes,0.65,0.71,0.75,0.77

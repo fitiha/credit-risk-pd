@@ -8,7 +8,7 @@
     "2013-01-01",
     "2014-12-01"
   ],
-  "git_commit": "d0f08b54ad544055c40b842183f5caa20728deb9",
+  "git_commit": "e80b02742e30438119d5540c13e789d87427d53c",
   "git_dirty": true,
   "training_data_hash": "4ff160121523e1936f71e23824207c51c881b5e92af3db7e8e5385c85708fc44",
   "training_date": "2026-10-31",
@@ -70,11 +70,12 @@
     "verification_status_woe",
     "term_woe"
   ],
-  "run_id": "20261031-124754",
+  "run_id": "20261031-130220",
   "thresholds": {
     "approve_below": 0.0625,
     "decline_at_or_above": 0.125
   },
+  "reference_group": "1,549 training loans the model approves",
   "inputs_used": [
     "annual_inc_log_woe",
     "loan_amnt_log_woe",
