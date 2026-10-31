@@ -43,3 +43,22 @@ def test_factor_scores_are_named_finite_and_repeatable(fitted):
     assert len([c for c in out.columns if c.startswith("pc_")]) == 7
     assert np.isfinite(out[factors].to_numpy()).all()
     assert np.allclose(out[factors], tr.transform(load_holdout(DATA))[factors])
+
+
+def test_a_batch_with_percentages_stored_as_fractions_is_rejected_not_scored(fitted):
+    bad = load_applications(DATA).head(300).copy()
+    bad["revol_util"] = bad["revol_util"] / 100
+    with pytest.raises(ValueError, match="revol_util"):
+        fitted.transform(bad)
+
+
+def test_a_single_low_utilisation_is_not_mistaken_for_a_fraction(fitted):
+    one = load_applications(DATA).head(1).copy()
+    one["revol_util"] = 0.9  # a genuine 0.9% utilisation
+    assert len(fitted.transform(one)) == 1
+
+
+def test_the_holdout_loader_converts_its_fraction_column_and_says_so():
+    with pytest.warns(UserWarning, match="revol_util"):
+        h = load_holdout(DATA)
+    assert h.revol_util.median() > 20 and h.revol_util.max() < 200

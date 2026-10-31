@@ -1,4 +1,5 @@
 """Load the raw CSV files and parse formats. No cleaning decisions happen here."""
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -32,8 +33,30 @@ def load_applications(data_dir: str | Path = "data") -> pd.DataFrame:
     return apps.merge(bureau, on="id", how="left", validate="one_to_one")
 
 
+PERCENT_COLUMNS = ("revol_util", "bc_util")
+MIN_ROWS_FOR_UNIT_CHECK = 100
+FRACTION_MEDIAN_BELOW = 1.5  # a percent column in training has a median near 55-65; a fraction column has one below 1
+
+
+def percent_columns_stored_as_fractions(df: pd.DataFrame) -> list[str]:
+    """Columns that hold percentages in training but look like fractions (0.91 for 91%) in this batch.
+
+    Decided on the whole batch, never per row: a single 0.9 could be a real 0.9% utilisation.
+    """
+    if len(df) < MIN_ROWS_FOR_UNIT_CHECK:
+        return []
+    return [c for c in PERCENT_COLUMNS if c in df and df[c].notna().any() and df[c].median() < FRACTION_MEDIAN_BELOW]
+
+
 def load_holdout(data_dir: str | Path = "data") -> pd.DataFrame:
-    return pd.read_csv(Path(data_dir) / "holdout_applications.csv", low_memory=False)
+    """The 2016 holdout. Its `revol_util` is stored as a fraction (all rows), so it is converted to percent here."""
+    df = pd.read_csv(Path(data_dir) / "holdout_applications.csv", low_memory=False)
+    fractions = percent_columns_stored_as_fractions(df)
+    for c in fractions:
+        df[c] = df[c] * 100
+    if fractions:
+        warnings.warn(f"holdout columns stored as fractions were multiplied by 100: {fractions}", stacklevel=2)
+    return df
 
 
 def load_servicing(data_dir: str | Path = "data") -> pd.DataFrame:

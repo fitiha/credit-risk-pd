@@ -8,6 +8,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from credit_risk.categorical import CategoryGrouper
 from credit_risk.cleaning import Cleaner
 from credit_risk.factors import FactorModel
+from credit_risk.io import percent_columns_stored_as_fractions
 from credit_risk.features import FeatureBuilder, FeatureTreater
 from credit_risk.outliers import AmountTreater, CountTreater, RatioTreater
 
@@ -20,7 +21,14 @@ class ApplicationTransformer(BaseEstimator, TransformerMixin):
                 ("counts", CountTreater()), ("features", FeatureBuilder()), ("feature_treater", FeatureTreater()),
                 ("categories", CategoryGrouper()), ("factors", FactorModel())]
 
+    @staticmethod
+    def _check_units(X):
+        wrong = percent_columns_stored_as_fractions(X)
+        if wrong:
+            raise ValueError(f"{wrong} look like fractions (0.91) but must be percentages (91); multiply the batch by 100 before scoring")
+
     def fit(self, X, y=None):
+        self._check_units(X)
         self.steps_ = self._new_steps()
         d = X
         for _, step in self.steps_:
@@ -28,6 +36,7 @@ class ApplicationTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        self._check_units(X)
         d = X
         for _, step in self.steps_:
             d = step.transform(d)
