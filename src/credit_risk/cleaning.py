@@ -88,3 +88,18 @@ class Cleaner(BaseEstimator, TransformerMixin):
         d["int_rate_imputed"] = ph
         d.loc[ph, "int_rate"] = fill[ph]
         return d
+
+    def spec_rules(self):
+        """Thresholds and fitted values for data_spec.json, so scoring repeats these fixes."""
+        return {
+            "annual_inc": f"values below {self.income_thousands_below:,} treated as thousands (x1000)",
+            "loan_amnt": f"if the payment implied by amount, rate and term is {self.amount_ratio:g}x the installment "
+                         f"(within {self.amount_ratio_tol:g}), the amount is divided by 10",
+            "int_rate": f"exactly {self.placeholder_rate:g} is a placeholder, replaced by the median rate of the sub_grade",
+            "revol_util": "negative values: sign removed",
+            "bc_util": "negative values: set to missing, indicator added",
+            "fico_range": "low and high swapped when low > high",
+            "earliest_cr_line": "later than issue_d: set to missing, indicator added",
+            "median_int_rate_by_sub_grade": self.rate_by_subgrade_,
+        }
+

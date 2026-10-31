@@ -89,3 +89,16 @@ def test_count_cap_keeps_zeros():
     out = t.transform(df)
     assert out["pub_rec_capped"].max() == t.caps_["pub_rec"] < 10
     assert (out["pub_rec_capped"][:990] == 0).all()
+
+
+def test_spec_entries_carry_the_fitted_limits_and_are_json_ready():
+    import json
+
+    t = AmountTreater(fields=["annual_inc"]).fit(frame(list(range(0, 1000))))
+    entry = t.spec_entries()["annual_inc"]
+    assert (entry["cap_low"], entry["cap_high"]) == t.caps_["annual_inc"]
+    assert entry["zero_indicator"] is True and "log(1 + x)" in entry["cleaning"]
+    r = RatioTreater(fields=["bc_util"]).fit(ratio_frame(list(range(0, 900)) + [np.nan] * 100))
+    assert r.spec_entries()["bc_util"]["missing_indicator"] is True
+    c = CountTreater(fields=["pub_rec"]).fit(pd.DataFrame({"issue_d": pd.to_datetime(["2014-01-01"] * 10), "pub_rec": range(10)}))
+    json.dumps([t.spec_entries(), r.spec_entries(), c.spec_entries()])  # must serialise

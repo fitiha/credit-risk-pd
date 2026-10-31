@@ -77,3 +77,10 @@ def test_placeholder_rate_uses_pre_cutoff_subgrade_median():
 
 def test_leaky_column_removed():
     assert "bureau_recovery_flag" not in clean(row()).columns
+
+
+def test_spec_rules_state_thresholds_and_fitted_rates():
+    df = pd.DataFrame([row(int_rate=10.0), row(int_rate=14.0)])
+    rules = Cleaner().fit(df).spec_rules()
+    assert "1,000" in rules["annual_inc"]
+    assert rules["median_int_rate_by_sub_grade"] == {"B3": 12.0}
