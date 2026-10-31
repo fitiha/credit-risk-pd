@@ -102,3 +102,9 @@ def test_spec_entries_carry_the_fitted_limits_and_are_json_ready():
     assert r.spec_entries()["bc_util"]["missing_indicator"] is True
     c = CountTreater(fields=["pub_rec"]).fit(pd.DataFrame({"issue_d": pd.to_datetime(["2014-01-01"] * 10), "pub_rec": range(10)}))
     json.dumps([t.spec_entries(), r.spec_entries(), c.spec_entries()])  # must serialise
+
+
+def test_count_caps_ignore_2015_loans():
+    base = pd.DataFrame({"issue_d": pd.to_datetime(["2014-01-01"] * 1000), "pub_rec": [0] * 950 + [1] * 40 + [2] * 10})
+    later = pd.concat([base, pd.DataFrame({"issue_d": pd.to_datetime(["2015-06-01"] * 500), "pub_rec": [9] * 500})], ignore_index=True)
+    assert CountTreater(fields=["pub_rec"]).fit(base).caps_ == CountTreater(fields=["pub_rec"]).fit(later).caps_

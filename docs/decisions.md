@@ -262,7 +262,7 @@ sample (43% of fields); with about 5,000 later loans, neighbouring bins differ b
 
 ## Information value ranking and the "too good to be true" check
 
-`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 31 numeric and 8 categorical fields (bins and
+`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 8 categorical fields (bins and
 groups as decided above). Output: `reports/a4_iv_ranking/`.
 
 | Field | IV | Reading |
@@ -271,7 +271,7 @@ groups as decided above). Output: `reports/a4_iv_ranking/`.
 | `term` | 0.20 | medium |
 | `fico_mid`, `loan_to_income` | 0.11, 0.11 | medium: the strongest fields the model builds itself |
 | `recent_accounts_share`, `acc_open_past_24mths`, `installment_to_income`, `dti`, `num_tl_op_past_12m` | 0.06 to 0.09 | weak |
-| most other fields | under 0.05 | weak or useless; 17 of 39 fields are below 0.02 |
+| most other fields | under 0.05 | weak or useless; 17 of 38 fields are below 0.02 |
 
 **The only IV near the suspicious zone is the platform's own score, and it is not a leak.** `int_rate` has
 11 bins with a smooth, one-directional pattern, from 3.6% default in the lowest-rate bin (WoE +1.71) to 37.1% in
