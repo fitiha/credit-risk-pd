@@ -1,0 +1,7 @@
+family,input_set,mean_auc_time_folds
+lightgbm,raw,0.6981
+lightgbm,factors,0.6967
+lightgbm,both,0.6995
+logistic,woe_only,0.6988
+logistic,factors_plus_category_woe,0.6975
+logistic,woe_plus_factors,0.6972

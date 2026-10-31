@@ -1,0 +1,158 @@
+{
+  "model": "woe_scorecard",
+  "note": "logistic regression on the contract's WoE columns",
+  "contract_version": "1.0.0",
+  "fit_cutoff": "2014-12-31",
+  "training_loans": 14373,
+  "training_years": [
+    "2013-01-01",
+    "2014-12-01"
+  ],
+  "git_commit": "d0f08b54ad544055c40b842183f5caa20728deb9",
+  "git_dirty": true,
+  "training_data_hash": "4ff160121523e1936f71e23824207c51c881b5e92af3db7e8e5385c85708fc44",
+  "training_date": "2026-10-31",
+  "seed": 42,
+  "calibration": {
+    "36": "platt",
+    "60": "platt"
+  },
+  "calibration_brier_cross_check": {
+    "36": {
+      "platt": 0.11178523602938772,
+      "isotonic": 0.11213824685477322
+    },
+    "60": {
+      "platt": 0.19875249272502954,
+      "isotonic": 0.2002953286265196
+    }
+  },
+  "fold_auc": [
+    0.6849,
+    0.7127
+  ],
+  "fold_brier": [
+    0.1303,
+    0.1407
+  ],
+  "inputs": [
+    "annual_inc_log_woe",
+    "loan_amnt_log_woe",
+    "installment_log_woe",
+    "revol_bal_log_woe",
+    "tot_cur_bal_log_woe",
+    "avg_cur_bal_log_woe",
+    "total_rev_hi_lim_log_woe",
+    "tot_hi_cred_lim_log_woe",
+    "dti_treated_woe",
+    "revol_util_treated_woe",
+    "bc_util_treated_woe",
+    "delinq_2yrs_capped_woe",
+    "pub_rec_capped_woe",
+    "pub_rec_bankruptcies_capped_woe",
+    "inq_last_6mths_capped_woe",
+    "mort_acc_capped_woe",
+    "open_acc_woe",
+    "total_acc_woe",
+    "acc_open_past_24mths_woe",
+    "num_tl_op_past_12m_woe",
+    "mths_since_last_delinq_woe",
+    "emp_length_years_woe",
+    "credit_history_months_treated_woe",
+    "loan_to_income_treated_woe",
+    "installment_to_income_treated_woe",
+    "fico_mid_treated_woe",
+    "open_acc_share_treated_woe",
+    "recent_accounts_share_treated_woe",
+    "revol_bal_to_income_treated_woe",
+    "purpose_group_woe",
+    "home_ownership_group_woe",
+    "verification_status_woe",
+    "term_woe"
+  ],
+  "run_id": "20261031-124754",
+  "thresholds": {
+    "approve_below": 0.0625,
+    "decline_at_or_above": 0.125
+  },
+  "inputs_used": [
+    "annual_inc_log_woe",
+    "loan_amnt_log_woe",
+    "installment_log_woe",
+    "tot_cur_bal_log_woe",
+    "avg_cur_bal_log_woe",
+    "total_rev_hi_lim_log_woe",
+    "tot_hi_cred_lim_log_woe",
+    "dti_treated_woe",
+    "revol_util_treated_woe",
+    "bc_util_treated_woe",
+    "delinq_2yrs_capped_woe",
+    "inq_last_6mths_capped_woe",
+    "mort_acc_capped_woe",
+    "open_acc_woe",
+    "total_acc_woe",
+    "acc_open_past_24mths_woe",
+    "num_tl_op_past_12m_woe",
+    "mths_since_last_delinq_woe",
+    "emp_length_years_woe",
+    "credit_history_months_treated_woe",
+    "loan_to_income_treated_woe",
+    "installment_to_income_treated_woe",
+    "fico_mid_treated_woe",
+    "open_acc_share_treated_woe",
+    "recent_accounts_share_treated_woe",
+    "revol_bal_to_income_treated_woe",
+    "purpose_group_woe",
+    "home_ownership_group_woe",
+    "verification_status_woe",
+    "term_woe"
+  ],
+  "inputs_dropped_for_wrong_sign": [
+    "revol_bal_log_woe",
+    "pub_rec_capped_woe",
+    "pub_rec_bankruptcies_capped_woe"
+  ],
+  "selection": {
+    "lightgbm_mean_auc": 0.6981188777958693,
+    "scorecard_mean_auc": 0.6988245094109649,
+    "chosen_input_set": "raw",
+    "monotone_cost_auc": -0.009633147516213025,
+    "monotone_declared": 22,
+    "monotone_kept": [
+      "annual_inc_capped",
+      "avg_cur_bal_capped",
+      "bc_util_treated",
+      "credit_history_months_treated",
+      "delinq_2yrs_capped",
+      "dti_treated",
+      "fico_mid_treated",
+      "inq_last_6mths_capped",
+      "installment_capped",
+      "installment_to_income_treated",
+      "loan_amnt_capped",
+      "loan_to_income_treated",
+      "num_tl_op_past_12m",
+      "pub_rec_bankruptcies_capped",
+      "pub_rec_capped",
+      "recent_accounts_share_treated",
+      "revol_bal_to_income_treated",
+      "revol_util_treated",
+      "term",
+      "tot_hi_cred_lim_capped",
+      "total_rev_hi_lim_capped"
+    ],
+    "unconstrained_auc": 0.6895894785866152,
+    "selected": "woe_scorecard",
+    "ablation_lightgbm": {
+      "raw": 0.6981,
+      "factors": 0.6967,
+      "both": 0.6995
+    },
+    "ablation_logistic": {
+      "woe_only": 0.6988,
+      "factors_plus_category_woe": 0.6975,
+      "woe_plus_factors": 0.6972
+    },
+    "grade_alone_auc": 0.697310580514792
+  }
+}

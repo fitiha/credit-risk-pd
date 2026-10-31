@@ -53,7 +53,8 @@ class Cleaner(BaseEstimator, TransformerMixin):
         state = d["addr_state"].astype(str).str.strip()
         d["addr_state"] = state.str.lower().map(STATE_NAMES).fillna(state.str.upper())
         # issue 2: job title case and spaces (grouping happens in A5)
-        d["emp_title"] = d["emp_title"].str.strip().str.lower()
+        title = d["emp_title"].astype("object")  # an all-empty column arrives as float and has no text methods
+        d["emp_title"] = title.where(title.isna(), title.astype(str).str.strip().str.lower())
 
         # issue 8: loan amount entered 10x too large. The installment is right,
         # so the amortised payment implied by the amount is ~10x the installment.

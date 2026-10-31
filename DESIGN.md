@@ -36,7 +36,7 @@ Three input sets are compared in the ablation: raw treated fields and features, 
    PD falls with FICO, income, credit limits and credit history length). No constraint on counts of accounts, whose effect is mixed.
    A constraint is kept only if it costs less than 0.002 AUC on the time folds.
 4. **Class imbalance (18.7% defaults):** no resampling, because it distorts PD. Class weighting is compared in tuning; the choice is made on Brier score and AUC after calibration.
-5. **Calibration:** isotonic or Platt, whichever has the lower Brier score on the out-of-fold predictions, checked on a reliability plot and by term.
+5. **Calibration:** isotonic or Platt, whichever has the lower Brier score on the out-of-fold predictions, checked on a reliability plot and by term. (Changed during the build, see section 10: calibrated separately for each term.)
 6. **Tuning:** a small fixed grid on the two time folds, seeds fixed, every run appended to `reports/experiments.csv`.
 
 ## 5. Metrics

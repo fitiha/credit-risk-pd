@@ -1,0 +1,6 @@
+{"issue_d": "Jun-2015", "loan_amnt": 15000, "term": 36, "int_rate": 13.5, "installment": 509.0, "grade": "C", "sub_grade": "C2", "purpose": "debt_consolidation",
+ "title": "Debt consolidation", "application_type": "Individual", "emp_title": "sales manager", "emp_length": "4 years", "home_ownership": "RENT",
+ "annual_inc": 58000, "verification_status": "Source Verified", "dti": 19.0, "zip_code": "750xx", "addr_state": "TX", "earliest_cr_line": "Aug-2005",
+ "fico_range_low": 690, "fico_range_high": 694, "inq_last_6mths": 1, "delinq_2yrs": 0, "mths_since_last_delinq": 30, "pub_rec": 0, "pub_rec_bankruptcies": 0,
+ "open_acc": 10, "total_acc": 22, "revol_bal": 14000, "revol_util": 55.0, "bc_util": 62.0, "tot_cur_bal": 52000, "avg_cur_bal": 5800, "total_rev_hi_lim": 25000,
+ "tot_hi_cred_lim": 70000, "mort_acc": 0, "acc_open_past_24mths": 4, "num_tl_op_past_12m": 2}

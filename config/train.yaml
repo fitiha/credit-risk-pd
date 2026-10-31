@@ -1,0 +1,36 @@
+# Settings for training and evaluating the PD model. Everything the training run depends on is here.
+seed: 42
+data_dir: data
+contract_dir: contract
+model_dir: models
+fit_cutoff: "2014-12-31"
+
+# time-ordered tuning folds inside the training years (the future never trains the past)
+folds:
+  - {train_end: "2013-12-31", valid_start: "2014-01-01", valid_end: "2014-06-30"}
+  - {train_end: "2014-06-30", valid_start: "2014-07-01", valid_end: "2014-12-31"}
+
+# 2015 is the out-of-time validation year: thresholds are chosen on the first half, results reported on the second
+policy_window: {start: "2015-01-01", end: "2015-06-30"}
+report_window: {start: "2015-07-01", end: "2015-12-31"}
+
+# decision policy assumptions (from the brief)
+loss_given_default: 0.70      # a defaulted loan loses 70% of the amount
+margin_if_repaid: 0.10        # a repaid loan earns 10% of the amount
+min_approval_margin: 0.05     # auto-approve only where the expected margin is at least 5% of the loan
+
+lightgbm:
+  grid:
+    num_leaves: [7, 15]
+    min_child_samples: [50, 100]
+    n_estimators: [150, 300]
+    reg_lambda: [1.0, 10.0]
+  learning_rate: 0.05
+  colsample_bytree: 0.8
+  subsample: 0.8
+  class_weight: [null, balanced]
+  max_cost_of_a_monotone_constraint_auc: 0.002
+
+scorecard:
+  top_k: [8, 12, 16, 20, 33]   # keep only the k WoE columns most related to default (chosen on the time folds)
+  C: [0.03, 0.1, 0.3, 1.0, 3.0]  # weights are also forced to point in the safe direction (see LogitPD)
