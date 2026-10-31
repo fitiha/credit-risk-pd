@@ -30,6 +30,11 @@ rate_table(d, "month").to_csv(TAB / "default_by_month.csv", index=False)
 rate_table(d, "term").to_csv(TAB / "default_by_term.csv", index=False)
 rate_table(d.assign(year=d.issue_d.dt.year), "year").to_csv(TAB / "default_by_year.csv", index=False)
 
+s60 = d[d.term == 60].groupby("matured").agg(loans=("id", "size"), defaults=("defaulted", "sum"))
+s60["rate"] = s60.defaults / s60.loans
+s60.rename(index={True: "scheduled end before Mar 2019", False: "scheduled end after Mar 2019"}) \
+    .to_csv(TAB / "default_60m_finished_vs_unfinished.csv", index_label="group")
+
 fig, ax = plt.subplots(figsize=(8, 4.5))
 halves = sorted(d.half.unique())
 x = {h: i for i, h in enumerate(halves)}

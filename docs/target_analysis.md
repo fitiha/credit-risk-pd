@@ -1,7 +1,7 @@
 # A2. Target analysis: `defaulted`
 
 Data: 30,000 unique loans issued Jan 2013 - Dec 2015, after cleaning (see `issue_log.md`).
-Reproduce: `uv run python scripts/a1_target_analysis.py` (output in `reports/a1_target_analysis/`).
+Reproduce: `uv run python scripts/a1_target_analysis.py` (output in `reports/a1_target_analysis/`). The early-repayment figures below come from `uv run python scripts/a1_label_audit.py` (output in `reports/a1_label_audit/`), which reads the servicing file for auditing only.
 
 ## Class balance
 5,617 defaults out of 30,000 loans: **18.7%**, about 1 default for every 4.3 repaid loans.
