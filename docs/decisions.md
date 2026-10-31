@@ -36,7 +36,10 @@ against freak values at scoring time. The limits are simple to state and store (
 p99.5 = 300,000"). Chosen on shape, rows touched and explainability, since predictive power was a tie.
 
 **Effect.** Default rate by decile is identical before and after the treatment (the cap and log
-keep every loan's rank), so no risk ordering is lost. Higher income and higher credit limits go
+keep every loan's rank), so no risk ordering is lost. This identity holds by construction, so it shows only that nothing
+was lost; it does not show a gain. The gain from treating the fields is in their shape (skewness from up to 63 to at most
+0.8) and in the PCA step: the largest score on the first component falls from 11.5 to 3.6 standard deviations and its kurtosis
+from 6.3 to -0.2, while the loadings barely move (similarity 0.99); see `reports/a5_pca/tables/outlier_treatment_effect.csv`. Higher income and higher credit limits go
 with lower default (income decile 1: 20.9%, decile 10: 13.8%); larger loans go with higher default
 (13.4% to 20.0%). Evidence: `reports/a2_treatment_effect/`.
 
