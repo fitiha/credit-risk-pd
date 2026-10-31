@@ -1,0 +1,7 @@
+field,loans_missing,pct_missing,default_rate_when_missing,ci_low,ci_high,default_rate_when_present,p_value_fisher
+emp_title,824,5.733,0.1881,0.1629,0.2162,0.1715,0.2171
+emp_length,686,4.7728,0.1953,0.1674,0.2267,0.1713,0.1083
+title,1,0.007,0.0,0.0,0.7935,0.1724,1.0
+mths_since_last_delinq,6665,46.3717,0.1667,0.1579,0.1758,0.1773,0.0925
+bc_util,151,1.0506,0.2119,0.1543,0.2838,0.172,0.1943
+revol_util,4,0.0278,0.25,0.0456,0.6994,0.1724,0.5309

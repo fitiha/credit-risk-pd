@@ -1,0 +1,4 @@
+verification_status,loans,median_income,p10_income,p90_income,pct_typed_in_thousands,pct_income_above_200k,spearman_income_vs_credit_limit,default_rate,kruskal_p_value_income_differs
+Not Verified,4257,58000.0,32000.0,103000.0,2.8424,0.3054,0.569,0.1271,0.0
+Source Verified,4941,66000.0,36000.0,130000.0,3.1977,2.4691,0.5583,0.1898,0.0
+Verified,5175,67000.0,35000.0,130000.0,3.1691,2.2802,0.5503,0.193,0.0
