@@ -39,7 +39,7 @@ def test_factor_scores_are_named_finite_and_repeatable(fitted):
     out = tr.transform(load_holdout(DATA))
     factors = [c for c in out.columns if c.startswith("factor_")]
     assert factors == ["factor_credit_capacity", "factor_loan_size", "factor_revolving_credit_size", "factor_account_count",
-                       "factor_revolving_utilization", "factor_public_records", "factor_recent_account_opening"]
+                       "factor_revolving_utilization", "factor_public_records", "factor_recent_account_opening", "factor_debt_burden"]
     assert len([c for c in out.columns if c.startswith("pc_")]) == 7
     assert np.isfinite(out[factors].to_numpy()).all()
     assert np.allclose(out[factors], tr.transform(load_holdout(DATA))[factors])

@@ -1,7 +1,5 @@
 field_a,field_b,spearman
-tot_cur_bal_log,tot_hi_cred_lim_log,0.98
 loan_amnt_log,installment_log,0.966
-tot_cur_bal_log,avg_cur_bal_log,0.937
 avg_cur_bal_log,tot_hi_cred_lim_log,0.902
 pub_rec_capped,pub_rec_bankruptcies_capped,0.861
 revol_util_treated,bc_util_treated,0.803

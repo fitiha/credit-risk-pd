@@ -1,0 +1,8 @@
+field_left_out,r_squared_on_included_fields
+loan_to_income_treated,0.884
+installment_to_income_treated,0.889
+revol_bal_to_income_log,0.743
+open_acc_share_treated,0.797
+recent_accounts_share_treated,0.787
+int_rate,0.361
+tot_cur_bal_log,0.99
