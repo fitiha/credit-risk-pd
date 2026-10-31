@@ -1,0 +1,11 @@
+method,auc,auc_ci_low,auc_ci_high
+(amount fields left out),0.5855,0.5658,0.6057
+none,0.6405,0.6191,0.6607
+clip_mean_3std,0.6438,0.623,0.6644
+clip_iqr_fences,0.6465,0.6256,0.6665
+clip_robust_z,0.6459,0.6261,0.6637
+winsor_p1_p99,0.6428,0.6247,0.6634
+winsor_p0.5_p99.5,0.6417,0.6221,0.6638
+log1p,0.649,0.6273,0.6733
+log1p_winsor_p0.5_p99.5,0.6488,0.6289,0.6684
+log1p_clip_mean_3std,0.6485,0.6273,0.6677

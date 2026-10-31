@@ -1,0 +1,12 @@
+check,loans
+defaulted loans whose principal was fully repaid,0
+paid loans with recoveries > 0,0
+paid loans with debt_settlement_flag = Y,0
+paid loans with total_pymnt = 0,0
+paid loans that repaid under 99% of principal,0
+loans with debt_settlement_flag = Y,763
+  settlement flag: of which labelled defaulted,763
+loans with bureau_recovery_flag = 1,4207
+  recovery flag: of which labelled defaulted,4207
+  of which recoveries > 0 in servicing,4207
+rows where bureau_recovery_flag differs from (recoveries > 0),0
