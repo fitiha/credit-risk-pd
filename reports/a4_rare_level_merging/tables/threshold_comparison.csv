@@ -1,0 +1,16 @@
+field,min_share_pct,min_loans_in_training,levels_before,groups_after,levels_merged,loans_in_other_pct,smallest_group_loans,iv_on_training_loans,iv_on_later_loans
+purpose,0.0,0,13,13,0,0.0,5,0.0275,0.0138
+purpose,0.25,24,13,12,2,0.2675,25,0.0277,0.0141
+purpose,0.5,47,13,10,4,1.1342,53,0.0259,0.014
+purpose,1.0,94,13,7,7,3.3597,96,0.0253,0.0152
+purpose,2.0,187,13,5,9,5.8635,410,0.0171,0.0102
+home_ownership,0.0,0,3,3,0,0.0,845,0.0237,0.0197
+home_ownership,0.25,24,3,3,0,0.0,845,0.0237,0.0197
+home_ownership,0.5,47,3,3,0,0.0,845,0.0237,0.0197
+home_ownership,1.0,94,3,3,0,0.0,845,0.0237,0.0197
+home_ownership,2.0,187,3,3,0,0.0,845,0.0237,0.0197
+addr_state,0.0,0,47,47,0,0.0,1,0.0374,0.0105
+addr_state,0.25,24,47,42,6,0.9844,25,0.0339,0.0051
+addr_state,0.5,47,47,36,12,3.2634,50,0.0314,0.0033
+addr_state,1.0,94,47,32,16,6.0133,99,0.0301,0.003
+addr_state,2.0,187,47,18,30,25.0374,198,0.0199,0.0066

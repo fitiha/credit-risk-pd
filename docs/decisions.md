@@ -176,3 +176,124 @@ corrupted get the median history (179 months) and keep the `earliest_cr_line_inv
 Everything is fitted on loans up to 2014-12-31; a test checks that 2015 loans do not change the fit.
 
 **Dropped:** `credit_limit_to_income` (AUC 0.53, adds little over the credit-limit and income fields already used).
+
+## Job titles (`emp_title`)
+
+**Problem.** After cleaning, the fit window has 13,549 titles with 8,157 distinct values; 7,082 appear once. The
+20, 50 and 200 most common titles cover only 13%, 19% and 30% of loans, so a code per title is unusable.
+
+**Compared** (`scripts/a4_emp_title_grouping.py`): keyword groups, the N most common titles (20, 50, 200), and
+only a missing flag. Each is judged by IV on the loans it was learned from (up to mid-2014) and on later loans
+(second half of 2014) using the WoE learned earlier, because more groups always look better in-sample.
+
+| Option | Groups | Smallest group | IV learned on | IV on later loans |
+|---|---|---|---|---|
+| Keyword groups | 10 | 439 loans | 0.0145 | 0.0153 |
+| Top 20 titles | 22 | 23 | 0.0187 | 0.0208 |
+| Top 50 titles | 52 | 11 | 0.0465 | 0.0287 |
+| Top 200 titles | 202 | 4 | 0.1195 | 0.0381 |
+| Missing flag only | 2 | 575 | 0.0012 | 0.0006 |
+
+**Choice: keyword groups.** Eight occupation groups from keyword rules (first match wins, order in
+`src/credit_risk/categorical.py`), plus `other_job` and `missing`. They are stable between training and later
+loans, every group is large, and each can be explained to a credit officer. The top-200 option is the textbook
+overfit: IV of 0.12 on its own training loans falls to 0.04 on later ones, with groups of 4 loans.
+
+**What job title is worth.** Little. IV is about 0.015, which is below the 0.02 line for a useful field.
+Default rates run from 13.9% (professional and technical) to 19.9% (trades, transport and labour); the
+spread is real but small. The group stays in the contract because it is cheap and explainable, but we
+should not expect it to carry the model.
+The 32% in `other_job` is a long tail of company names and one-off titles (Wells Fargo, Walmart, UPS).
+Evidence: `reports/a4_emp_title_grouping/`.
+
+**Job group is restricted, not a default model input.** Occupation can stand in for characteristics the data does
+not contain (sex, age, ethnicity), which would be indirect discrimination, and we cannot test for it because
+those fields are absent. Its predictive value is small (IV about 0.015), so the cost of leaving it out is close to
+zero. The grouping stays in the data contract (the brief asks for it) and is available as a test variant; the
+fairness review (A7) discusses it together with `zip_code` and `addr_state`. `emp_length` is flagged in the same
+review, since length of employment tends to rise with age.
+
+## Rare levels of `purpose`, `home_ownership` and `addr_state`; employment length
+
+**Minimum group size: 1% of fit-window loans (about 144 of 14,373).** Levels below it merge into one
+`other_<field>` level, and levels never seen when fitting (a new state, for example) map there too.
+Compared at 0%, 0.25%, 0.5%, 1% and 2% (`scripts/a4_rare_level_merging.py`; IV learned on loans to mid-2014 and
+checked on later loans):
+
+| Field | Levels | At 1%: groups left, loans in other, smallest group | IV learned on / on later loans |
+|---|---|---|---|
+| `purpose` | 13 | 7 groups, 3.4%, 96 loans | 0.0253 / 0.0152 (best of the thresholds) |
+| `home_ownership` | 3 | 3 groups, nothing merged, 845 loans | 0.0237 / 0.0197 |
+| `addr_state` | 47 | 32 groups, 6.0%, 99 loans | 0.0301 / 0.0030 |
+
+Why 1%: at about 100 loans a group's default rate carries an uncertainty of roughly ±4 points, and below that
+the WoE values wobble. A threshold of 2% starts merging real categories (medical, small business) and puts 25%
+of state loans into `other`; 0.5% leaves groups as small as 50 loans.
+
+**State is mostly noise.** Its IV looks like 0.03 on the loans it was learned from but falls to 0.003 to 0.010
+on later loans at every threshold, below the 0.02 line for a useful field. It also carries the location proxy
+risk, so it stays restricted (see the fairness review). Merging is applied because the brief asks for it and the
+spec needs it.
+
+**Employment length** is ordered 0 (under 1 year) to 10 (10+ years) with missing as its own level.
+Default rates are flat at 17% to 19% for 1 to 9 years, lower at 10+ years (15.5%), and higher for under 1 year
+(19.7%) and missing (19.5%). It is not a clean staircase, and its IV is 0.012, so it is binned into fewer
+steadier groups in the WoE step. Evidence: `reports/a4_rare_level_merging/`.
+
+## Binning numeric fields for WoE
+
+Compared on 30 numeric fields (`scripts/a4_binning_comparison.py`): ten equal-sized bins, equal-sized bins merged until
+the default rate moves in one direction with every bin at least 5% of loans ("monotonic merge"), and decision-tree
+bins (up to 6 leaves, each at least 5% of loans). Bins were learned on loans to mid-2014 and judged on later loans.
+
+| Method | Average bins | IV learned on | IV on later loans | Share of IV kept on later loans |
+|---|---|---|---|---|
+| Ten equal-sized bins | 8.7 | 0.047 | 0.049 | 105% |
+| Monotonic merge | 5.3 | 0.045 | 0.049 | 109% |
+| Tree, 6 leaves | 5.5 | 0.053 | 0.049 | 93% |
+
+**Choice: monotonic merge.** The three tie on later-loan IV, so the choice rests on stability and fit for a scorecard:
+fewest bins, no IV lost on later loans, a one-directional pattern by construction (a credit officer can read
+"higher means riskier"), and a minimum bin size of 5% of loans. Trees overfit the training window slightly; ten
+equal bins are needlessly fine. Missing values get their own bin. Bin edges are learned on the fit window and
+reused unchanged at scoring time.
+Note that a pattern that is one-directional on training loans is not always one-directional on the smaller later
+sample (43% of fields); with about 5,000 later loans, neighbouring bins differ by less than the noise.
+
+## Information value ranking and the "too good to be true" check
+
+`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 31 numeric and 8 categorical fields (bins and
+groups as decided above). Output: `reports/a4_iv_ranking/`.
+
+| Field | IV | Reading |
+|---|---|---|
+| `int_rate`, `grade` | 0.46, 0.45 | strong, close to the 0.5 line: the platform's own score |
+| `term` | 0.20 | medium |
+| `fico_mid`, `loan_to_income` | 0.11, 0.11 | medium: the strongest fields the model builds itself |
+| `recent_accounts_share`, `acc_open_past_24mths`, `installment_to_income`, `dti`, `num_tl_op_past_12m` | 0.06 to 0.09 | weak |
+| most other fields | under 0.05 | weak or useless; 17 of 39 fields are below 0.02 |
+
+**The only IV near the suspicious zone is the platform's own score, and it is not a leak.** `int_rate` has
+11 bins with a smooth, one-directional pattern, from 3.6% default in the lowest-rate bin (WoE +1.71) to 37.1% in
+the highest (WoE -1.04). It is strong because the platform's existing risk model set it from the same applicant
+data, so it is an echo of a model that already knew these fields. It is known at application time and consistent,
+so it is not target leakage, but it is the reason it is not a default model input (see the earlier decision).
+
+**What "too good to be true" looks like here.** The same calculation on fields recorded after the loan gives:
+
+| Field (post-issue) | IV |
+|---|---|
+| `bureau_recovery_flag` | 9.4 |
+| `recoveries` | 5.6 |
+| `last_fico_range_high` | 3.6 |
+| `last_pymnt_amnt` | 3.4 |
+| `total_rec_prncp` | 2.2 |
+| `total_pymnt` | 0.7 |
+
+Every one is above 0.5 by a wide margin. Any field of ours showing an IV in that range would be a leak; none does.
+A model on application-time fields should therefore be expected to reach only a modest AUC (around 0.70), and an
+AUC far above that would be a warning sign, not good news.
+
+**Two cautions.** `term` (IV 0.20) is partly affected by the in-progress-loan bias described in the target analysis,
+which inflates the default rate of recent 60-month loans. And `grade`/`int_rate` are kept out of the default input
+set, so the strongest legitimate fields are `fico_mid`, `loan_to_income` and the recent-borrowing fields.

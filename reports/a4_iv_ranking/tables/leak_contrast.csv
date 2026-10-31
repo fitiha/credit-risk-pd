@@ -1,0 +1,7 @@
+field,known_at_application,iv,strength
+bureau_recovery_flag,False,9.374,suspicious
+recoveries,False,5.633,suspicious
+last_fico_range_high,False,3.564,suspicious
+last_pymnt_amnt,False,3.377,suspicious
+total_rec_prncp,False,2.24,suspicious
+total_pymnt,False,0.704,suspicious
