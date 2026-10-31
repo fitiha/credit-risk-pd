@@ -87,3 +87,43 @@ A zero is a real value everywhere and is never treated as missing. Fill values: 
 
 **Implementation.** `RatioTreater` and `CountTreater` in `src/credit_risk/outliers.py`. Evidence
 (before and after charts, default rate by decile): `reports/a2_treatment_effect/`.
+
+## Is mean ± 3 standard deviations sound? Field by field
+
+Pre-2015 loans. "Flagged" is the share of loans outside mean ± 3 std. Skewness is 0 for a symmetric field.
+Source: `reports/a2_financial_values_profile/tables/`.
+
+| Field | Skew | Limit (upper) vs 99th percentile | Flagged | Sound? | Why |
+|---|---|---|---|---|---|
+| `annual_inc` | 63.3 | $305,292 vs $250,000 | 0.4% | No | One $7.5M income inflates the std ($77k, against an IQR of $45k), pushing the limit above the 99th percentile. The lower limit is −$156,543 and can never trigger. The IQR and robust rules flag 616 and 654 loans, the 3-std rule 57. |
+| `loan_amnt` | 0.7 | $39,620 vs $35,000 | 0% | Not needed | Bounded by the product maximum; no tail. The limit lies above the largest value. |
+| `installment` | 0.9 | $1,184 vs $1,196 | 1.2% | Works by accident | Bounded by loan size. The limit lands near the 99th percentile only because the field is bounded; it is a function of amount, rate and term, so it has no independent outliers. |
+| `revol_bal` | 12.8 | $100,676 vs $115,303 | 1.2% | No | A $1.18M maximum inflates the std ($27,647). The limit falls below the 99th percentile, so it flags ordinary heavy-tail balances. |
+| `tot_cur_bal` | 2.9 | $595,363 vs $631,213 | 1.3% | No | Limit below the 99th percentile; flags real borrowers. Lower limit negative. |
+| `avg_cur_bal` | 4.8 | $61,707 vs $70,494 | 1.7% | No | Same pattern. |
+| `total_rev_hi_lim` | 5.7 | $120,997 vs $141,140 | 1.6% | No | Same pattern. |
+| `tot_hi_cred_lim` | 2.7 | $671,972 vs $724,281 | 1.3% | No | Same pattern. |
+| `dti` | 0.2 | 41.5 vs 34.9 | 0% | Sound, unnecessary | Nearly symmetric, nothing flagged. The real risk is values above 100 seen in 2015, which a percentile cap handles more simply. |
+| `revol_util` | 0.0 | 125.5 vs 98.0 | 0.01% | Sound, unnecessary | Symmetric. Flags 2 loans (maximum 366%). The meaningful threshold is a business one (100% of the limit), so a cap is used instead. |
+| `bc_util` | −0.6 | 144.2 vs 101.2 | 0.01% | Sound, unnecessary | Same as `revol_util`. |
+
+For the six heavy-tailed money fields the rule fails in the same way: the tail inflates the std, the
+limit is one-sided in practice (the lower limit is negative), and it flags 1% to 2% of genuine borrowers
+while the robust rules flag 3% to 6%, so no single threshold is trustworthy.
+
+## Errors versus genuine extremes, field by field
+
+An error is repaired in the cleaning step (see `issue_log.md`). A genuine extreme is kept and capped.
+Judged from application-time information only, never from the outcome. Counts of genuine extremes
+are over all 30,000 loans; caps are fitted on pre-2015 loans.
+
+| Field | Errors repaired | Genuine extremes kept and capped |
+|---|---|---|
+| `annual_inc` | 899 incomes typed in thousands, multiplied by 1,000 (issue 10) | 5 incomes above $1M, all verified or source-verified by the platform with tiny debt-to-income; capped at $300,000 |
+| `loan_amnt` | 300 amounts 10x too large, divided by 10 (issue 8) | None left; maximum is the $35,000 product limit |
+| `installment` | None | None; 4 loans inconsistent with the loan math are flagged, not changed (issue 9) |
+| `revol_bal`, `tot_cur_bal`, `avg_cur_bal`, `total_rev_hi_lim`, `tot_hi_cred_lim` | None found | Values up to $3.5M kept and capped (for example `revol_bal` at $176,561); a few zeros are real and carry an `is_zero` indicator |
+| `dti` | None | Zero values are real (8 loans); high values capped at 36.9 |
+| `revol_util` | 295 negative values, sign removed (issue 14) | 114 loans above 100% after a limit cut, capped at 99.2. The cap also removes the distinction between 100% and 150%; with 114 of 30,000 loans we accept that. |
+| `bc_util` | 290 negative values set to missing with an indicator, because the sign flip cannot be proven (issue 14) | 590 loans above 100%, capped at 102.9 |
+| Count fields | None | Capped at the 99.5th percentile (0.1% to 0.4% of loans) |
