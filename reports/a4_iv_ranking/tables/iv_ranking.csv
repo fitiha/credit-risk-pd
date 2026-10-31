@@ -1,4 +1,5 @@
 field,kind,bins_or_groups,iv,strength,role
+sub_grade,categorical,35,0.5035,suspicious,platform score
 int_rate,numeric,11,0.4639,strong,platform score
 grade,categorical,7,0.4544,strong,platform score
 term,categorical,2,0.1952,medium,input
@@ -18,6 +19,7 @@ tot_cur_bal_log,numeric,6,0.0345,weak,input
 inq_last_6mths_capped,numeric,4,0.031,weak,input
 revol_util_treated,numeric,9,0.0298,weak,input
 total_rev_hi_lim_log,numeric,6,0.0286,weak,input
+mort_acc_capped,numeric,6,0.0219,weak,input
 home_ownership_group,categorical,3,0.0213,weak,input
 loan_amnt_log,numeric,6,0.0207,weak,input
 open_acc_share_treated,numeric,7,0.0181,useless,input
@@ -28,11 +30,10 @@ purpose_group,categorical,6,0.0149,useless,input
 credit_history_months_treated,numeric,6,0.014,useless,input
 revol_bal_to_income_treated,numeric,5,0.0118,useless,input
 open_acc,numeric,7,0.0112,useless,input
+emp_length_years,numeric,5,0.0099,useless,input
+mths_since_last_delinq,numeric,4,0.0036,useless,input
 revol_bal_log,numeric,6,0.0026,useless,input
 delinq_2yrs_capped,numeric,3,0.0024,useless,input
-mths_since_last_delinq,numeric,2,0.0014,useless,input
-emp_length_years,numeric,2,0.0013,useless,input
 total_acc,numeric,3,0.0012,useless,input
 pub_rec_capped,numeric,2,0.0004,useless,input
 pub_rec_bankruptcies_capped,numeric,2,0.0001,useless,input
-mort_acc_capped,numeric,1,0.0,useless,input

@@ -127,12 +127,18 @@ class Trainer:
                 "fold_auc": [round(a, 4) for a in aucs], "fold_brier": [round(b, 4) for b in briers], "inputs": list(columns), "run_id": self.run_id}
         th = policy.thresholds(self.cfg)
         meta["thresholds"] = th
+        # reasons compare an applicant with a typical APPROVED applicant: against the average one, most declined applicants would have no reason at all
+        bundle = PDModel(model, calibrator, th, meta, reason_map)
+        approved = pd.Series(policy.decide(bundle.score(self.train), th), index=self.train.index) == "approve"
+        if getattr(model, "kind", "") == "logistic":
+            model.reference_ = self.train.loc[approved, model.columns].to_numpy(float).mean(axis=0)
+        meta["reference_group"] = f"{int(approved.sum()):,} training loans the model approves"
         meta["inputs_used"] = list(getattr(model, "columns", columns))
         meta["inputs_dropped_for_wrong_sign"] = list(getattr(model, "dropped_", []))
         reference = {}
         for c in set(reason_map.values()):
             if c in self.train.columns and pd.api.types.is_numeric_dtype(self.train[c]):
-                reference[c] = float(self.train[c].median())
+                reference[c] = float(self.train.loc[approved, c].median())
         return PDModel(model, calibrator, th, meta, reason_map, reference), oof
 
     def run(self):

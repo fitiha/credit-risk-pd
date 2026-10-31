@@ -55,8 +55,11 @@ class LogitPD:
         return self.model_.predict_proba(self._z(df))[:, 1]
 
     def contributions(self, df):
-        """Log-odds each input adds to this applicant's default risk compared with the average applicant (positive pushes PD up)."""
-        return self._z(df) * self.model_.coef_[0]
+        """Log-odds each input adds to this applicant's default risk compared with a typical approved applicant (positive pushes PD up).
+
+        The comparison point is `reference_` (the mean input of applicants the model approves) once it has been set; before that it is the average applicant."""
+        ref = getattr(self, "reference_", self.mean_)
+        return ((df[self.columns].to_numpy(float) - ref) / self.scale_) * self.model_.coef_[0]
 
 
 class LgbmPD:

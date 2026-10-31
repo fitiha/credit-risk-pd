@@ -36,7 +36,10 @@ against freak values at scoring time. The limits are simple to state and store (
 p99.5 = 300,000"). Chosen on shape, rows touched and explainability, since predictive power was a tie.
 
 **Effect.** Default rate by decile is identical before and after the treatment (the cap and log
-keep every loan's rank), so no risk ordering is lost. Higher income and higher credit limits go
+keep every loan's rank), so no risk ordering is lost. This identity holds by construction, so it shows only that nothing
+was lost; it does not show a gain. The gain from treating the fields is in their shape (skewness from up to 63 to at most
+0.8) and in the PCA step: the largest score on the first component falls from 11.5 to 3.6 standard deviations and its kurtosis
+from 6.3 to -0.2, while the loadings barely move (similarity 0.99); see `reports/a5_pca/tables/outlier_treatment_effect.csv`. Higher income and higher credit limits go
 with lower default (income decile 1: 20.9%, decile 10: 13.8%); larger loans go with higher default
 (13.4% to 20.0%). Evidence: `reports/a2_treatment_effect/`.
 
@@ -266,20 +269,32 @@ reused unchanged at scoring time.
 Note that a pattern that is one-directional on training loans is not always one-directional on the smaller later
 sample (43% of fields); with about 5,000 later loans, neighbouring bins differ by less than the noise.
 
+**Bug found and fixed (31 Oct, during the Part A review).** For fields with many values at their minimum (counts), the
+first bin edge equals that minimum and leaves an empty bin below it. Its default rate of 0 was read as part of the trend,
+which flipped the detected direction and merged real patterns into a single bin. Three fields were hit: `mort_acc`
+(1 bin and IV 0.000 before, 6 bins and IV 0.022 after), `emp_length` (0.001 to 0.010) and `mths_since_last_delinq`
+(0.001 to 0.004). Empty bins are now removed before the direction is judged; `tests/test_binning.py` covers it. The contract
+and the models were rebuilt. Model results moved by at most 0.003 AUC (selected scorecard 0.7185 against grade alone 0.7218),
+because the three fields are weak, and the scorecard still drops `mort_acc` since its weight points the wrong way beside the
+other fields.
+
 ## Information value ranking and the "too good to be true" check
 
-`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 7 categorical fields (bins and
+`scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 8 categorical fields (the 8th is `sub_grade`, ranked but not in the contract) (bins and
 groups as decided above). Output: `reports/a4_iv_ranking/`.
 
 | Field | IV | Reading |
 |---|---|---|
+| `sub_grade` | 0.50 | on the 0.5 line: the platform's own score at 35 levels (a ranked scale with 15 monotone bins gives 0.49) |
 | `int_rate`, `grade` | 0.46, 0.45 | strong, close to the 0.5 line: the platform's own score |
 | `term` | 0.20 | medium |
 | `fico_mid`, `loan_to_income` | 0.11, 0.11 | medium: the strongest fields the model builds itself |
 | `recent_accounts_share`, `acc_open_past_24mths`, `installment_to_income`, `dti`, `num_tl_op_past_12m` | 0.06 to 0.09 | weak |
 | most other fields | under 0.05 | weak or useless; 16 of 37 fields are below 0.02 |
 
-**The only IV near the suspicious zone is the platform's own score, and it is not a leak.** `int_rate` has
+**The only IVs near or on the suspicious line are the platform's own score (`sub_grade` 0.50, `int_rate` 0.46, `grade` 0.45), and
+they are not leaks.** Part of `sub_grade`'s edge over `grade` is only that 35 levels give the calculation more room to fit noise.
+`sub_grade` is ranked here but has no contract column. `int_rate` has
 11 bins with a smooth, one-directional pattern, from 3.6% default in the lowest-rate bin (WoE +1.71) to 37.1% in
 the highest (WoE -1.04). It is strong because the platform's existing risk model set it from the same applicant
 data, so it is an echo of a model that already knew these fields. It is known at application time and consistent,

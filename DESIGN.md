@@ -66,5 +66,15 @@ Scoring one application must take under 100 ms: the transform takes about 20 ms,
 - **Retrain:** yearly, or when PSI exceeds 0.25 on a key input or calibration drifts; refit the whole contract on the new window, compare with the incumbent on the most recent matured cohort, run in shadow before switching.
 - **Fairness:** compare approval and default rates by region and income band every release; test disparate impact when demographic data is available.
 
-## 10. What changed
-(To be completed at the end.)
+## 10. What changed (written at the end)
+- **Model selection had to be made leakage-free.** The contract's WoE values were fitted on all pre-2015 labels, which made the scorecard look 0.010 AUC better on the tuning folds than it is (0.709 against 0.700). Selection and tuning therefore refit the WoE inside each fold (the contract itself is untouched). On that clean basis the scorecard, constrained boosting and grade alone are within 0.003 of each other.
+- **The selection rule was kept.** Boosting must beat the scorecard by 0.005 on the tuning folds; it did not (0.698 against 0.699), so the transparent scorecard is the model. On 2015 the boosted challenger turned out slightly better (AUC 0.725 against 0.719) but changing the rule after seeing 2015 would be selection on the test set, so it is reported as a challenger.
+- **Monotone constraints help; the design had them backwards.** Section 4 said a constraint is kept only if it costs less than 0.002 AUC. In fact the declared constraints raise the time-fold AUC from 0.690 to 0.698, and an audit one constraint at a time kept 21 of 22 (0.699).
+- **Scorecard weights are sign-constrained** (standard scorecard practice): a WoE column whose weight points the wrong way is removed. 30 of 33 columns remain, at a cost of 0.001 AUC, and every reason code is meaningful.
+- **Calibration is per term, not pooled.** One calibrator left 36-month loans over-confident (slope 0.90) and 60-month loans under-predicted (slope 0.86) on 2015; calibrating each term separately gives 0.96 and 1.02.
+- **"Beats grade alone" was not achieved.** The platform's grade is a strong model of the same data. Calibrated by term, it reaches AUC 0.722 on 2015 against 0.719 for the scorecard (difference not significant), and a policy driven by grade alone earned slightly more on 2015 H2. Allowing the sub-grade as an input gives 0.732 (+0.011 over grade alone), so our fields carry real, independent information. The design decision to exclude it is kept and documented as a business choice, with the variant available.
+- **Reason codes compare with a typical approved applicant**, not the average one: against the average, most declined applicants have no reason at all (the average PD, 18.7%, is far above the 12.5% decline line). A reason must raise the odds of default by roughly 10%.
+- **Live scoring has a strict mode** that rejects an application that looks mis-entered (a loan ten times too large, an income in thousands) instead of repairing it silently; repairs remain for historical data.
+- **Thresholds** were kept at the profit-based 6.25% and 12.5%: the profit-maximising decline threshold on 2015 H1 (13.5%) is close, and the profit curve is flat there.
+- **Not built, as planned or by choice:** the experiment log is a CSV, not MLflow; no production API or Docker (out of scope); no test of disparate impact because the data has no demographic fields.
+- **Latency** is 34 ms at the median and 36 ms at the 95th percentile for the whole call (the contract transform is 20 ms of it), inside the 100 ms budget.

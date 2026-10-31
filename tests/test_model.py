@@ -146,3 +146,12 @@ def test_a_live_application_that_looks_mis_entered_is_stopped_but_historical_rep
 def test_the_example_applicants_need_no_repair(predictor):
     for name in ("low_risk", "borderline", "high_risk"):
         predictor.predict(example(name))  # strict is the default and must not complain
+
+
+def test_a_declined_applicant_is_told_why_and_an_approved_one_needs_few_reasons(predictor):
+    assert predictor.predict(example("borderline"))["decision"] == "review"
+    declined = predictor.predict(example("high_risk"))
+    assert declined["decision"] == "decline" and len(declined["reason_codes"]) >= 3
+    assert all("typical approved applicant" in r or r.split(":")[0] in ("Loan purpose", "Home ownership", "Income verification") for r in declined["reason_codes"])
+    assert len(predictor.predict(example("low_risk"))["reason_codes"]) <= len(declined["reason_codes"])
+    assert predictor.predict(example("borderline"))["reason_codes"]  # a loan sent to review is also told what to look at

@@ -3,6 +3,7 @@ name = "credit-risk"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "gradio>=6.31.0",
     "huggingface-hub[cli]>=2.4.0",
     "joblib>=1.6.0",
     "jupyterlab>=4.6.5",

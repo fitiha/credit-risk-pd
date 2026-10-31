@@ -1,4 +1,4 @@
 model,auc_model,auc_grade_alone,gain,ci_low,ci_high
-woe_scorecard,0.7188,0.7218,-0.003,-0.0102,0.0046
+woe_scorecard,0.7185,0.7218,-0.0033,-0.01,0.0045
 lightgbm,0.7246,0.7218,0.0028,-0.0032,0.0099
-scorecard_plus_grade,0.7323,0.7218,0.0105,0.0053,0.0158
+scorecard_plus_grade,0.731,0.7218,0.0092,0.0041,0.0147

@@ -1742,17 +1742,53 @@
     },
     "mort_acc_capped": {
       "method": "monotonic_merge",
-      "edges": [],
+      "edges": [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        6.0
+      ],
       "bins": [
         {
           "label": "bin_00",
-          "loans": 14373,
-          "default_rate": 0.1724,
-          "woe": 0.0
+          "loans": 5549,
+          "default_rate": 0.1957,
+          "woe": -0.1547
+        },
+        {
+          "label": "bin_01",
+          "loans": 2323,
+          "default_rate": 0.1752,
+          "woe": -0.0195
+        },
+        {
+          "label": "bin_02",
+          "loans": 2001,
+          "default_rate": 0.1609,
+          "woe": 0.0824
+        },
+        {
+          "label": "bin_03",
+          "loans": 1557,
+          "default_rate": 0.1516,
+          "woe": 0.1529
+        },
+        {
+          "label": "bin_04",
+          "loans": 1886,
+          "default_rate": 0.1511,
+          "woe": 0.1567
+        },
+        {
+          "label": "bin_05",
+          "loans": 1057,
+          "default_rate": 0.1343,
+          "woe": 0.2924
         }
       ],
-      "iv": 0.0,
-      "strength": "useless",
+      "iv": 0.0219,
+      "strength": "weak",
       "woe_convention": "ln(share repaid / share defaulted); positive = safer",
       "unseen_value_woe": 0.0
     },
@@ -1966,44 +2002,81 @@
     },
     "mths_since_last_delinq": {
       "method": "monotonic_merge",
-      "edges": [],
+      "edges": [
+        17.0,
+        73.0
+      ],
       "bins": [
         {
           "label": "bin_00",
-          "loans": 7708,
-          "default_rate": 0.1773,
-          "woe": -0.0342
+          "loans": 2658,
+          "default_rate": 0.1904,
+          "woe": -0.1212
+        },
+        {
+          "label": "bin_01",
+          "loans": 4625,
+          "default_rate": 0.1706,
+          "woe": 0.0129
+        },
+        {
+          "label": "bin_02",
+          "loans": 425,
+          "default_rate": 0.1694,
+          "woe": 0.0163
         },
         {
           "label": "missing",
           "loans": 6665,
           "default_rate": 0.1667,
-          "woe": 0.0406
+          "woe": 0.0409
         }
       ],
-      "iv": 0.0014,
+      "iv": 0.0036,
       "strength": "useless",
       "woe_convention": "ln(share repaid / share defaulted); positive = safer",
       "unseen_value_woe": 0.0
     },
     "emp_length_years": {
       "method": "monotonic_merge",
-      "edges": [],
+      "edges": [
+        1.0,
+        3.0,
+        10.0
+      ],
       "bins": [
         {
           "label": "bin_00",
-          "loans": 13687,
-          "default_rate": 0.1713,
-          "woe": 0.0082
+          "loans": 1050,
+          "default_rate": 0.1971,
+          "woe": -0.1654
+        },
+        {
+          "label": "bin_01",
+          "loans": 2082,
+          "default_rate": 0.1835,
+          "woe": -0.0759
+        },
+        {
+          "label": "bin_02",
+          "loans": 5675,
+          "default_rate": 0.1762,
+          "woe": -0.026
+        },
+        {
+          "label": "bin_03",
+          "loans": 4880,
+          "default_rate": 0.1547,
+          "woe": 0.1297
         },
         {
           "label": "missing",
           "loans": 686,
           "default_rate": 0.1953,
-          "woe": -0.1555
+          "woe": -0.155
         }
       ],
-      "iv": 0.0013,
+      "iv": 0.0099,
       "strength": "useless",
       "woe_convention": "ln(share repaid / share defaulted); positive = safer",
       "unseen_value_woe": 0.0

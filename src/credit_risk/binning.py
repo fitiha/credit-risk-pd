@@ -29,6 +29,11 @@ def monotonic_edges(x, y, n_start=20, min_share=0.05):
     x, y = np.asarray(x, float), np.asarray(y, float)
     edges = quantile_edges(x, n_start)
     n, d = _stats(x, y, edges)
+    # A field with many values at its minimum (counts, zeros) gets a first edge equal to that minimum, which
+    # leaves an empty bin below it. Its "rate" of 0 is not data, so drop it before judging the direction.
+    while len(edges) > 0 and n[0] == 0:
+        edges.pop(0)
+        n, d = _stats(x, y, edges)
     rate = d / np.maximum(n, 1)
     sign = np.sign(np.polyfit(np.arange(len(rate)), rate, 1)[0]) or 1.0
     while len(edges) > 0:
