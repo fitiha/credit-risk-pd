@@ -1,0 +1,5 @@
+input_set,auc,auc_ci_low,auc_ci_high
+sub_grade_only,0.6973,0.6777,0.7169
+int_rate_only,0.696,0.6773,0.714
+our_inputs,0.7079,0.6904,0.7263
+our_inputs_plus_sub_grade,0.7121,0.6947,0.7313
