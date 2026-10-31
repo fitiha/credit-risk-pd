@@ -1,10 +1,8 @@
 """A3: distribution profile of every financial field on loans up to the fit cutoff.
 
-Writes reports/tables/a3_profile.csv, a3_outlier_rules.csv and one chart per field
-(linear and log scale) in reports/figures/a3_dist_<field>.png.
+Writes reports/financial_values_profile/tables/{field_profile,outlier_rule_counts}.csv
+and one chart per field (linear and log scale) in .../figures/distribution_<field>.png.
 """
-from pathlib import Path
-
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -13,15 +11,14 @@ import pandas as pd
 
 from credit_risk.cleaning import Cleaner
 from credit_risk.io import FIT_CUTOFF, load_applications
+from credit_risk.reporting import fresh_dirs
 from credit_risk.stats import describe_field, outlier_counts
 
 AMOUNTS = ["annual_inc", "loan_amnt", "installment", "revol_bal", "tot_cur_bal",
            "avg_cur_bal", "total_rev_hi_lim", "tot_hi_cred_lim"]
 RATIOS = ["dti", "revol_util", "bc_util"]
 COUNTS = ["delinq_2yrs", "pub_rec", "pub_rec_bankruptcies", "inq_last_6mths", "mort_acc"]
-FIG, TAB = Path("reports/figures"), Path("reports/tables")
-FIG.mkdir(parents=True, exist_ok=True)
-TAB.mkdir(parents=True, exist_ok=True)
+FIG, TAB = fresh_dirs("financial_values_profile")
 
 raw = load_applications()
 d = Cleaner().fit(raw).transform(raw)
@@ -30,10 +27,10 @@ print(f"{len(fit):,} loans issued up to {FIT_CUTOFF.date()}")
 
 profile = pd.DataFrame({c: describe_field(fit[c]) for c in AMOUNTS + RATIOS + COUNTS}).T
 profile.insert(0, "group", ["amount"] * len(AMOUNTS) + ["ratio"] * len(RATIOS) + ["count"] * len(COUNTS))
-profile.to_csv(TAB / "a3_profile.csv", index_label="field")
+profile.to_csv(TAB / "field_profile.csv", index_label="field")
 
 rules = pd.DataFrame({c: outlier_counts(fit[c]) for c in AMOUNTS + RATIOS + COUNTS}).T
-rules.to_csv(TAB / "a3_outlier_rules.csv", index_label="field")
+rules.to_csv(TAB / "outlier_rule_counts.csv", index_label="field")
 
 for c in AMOUNTS + RATIOS:
     x = fit[c].dropna()
@@ -48,7 +45,7 @@ for c in AMOUNTS + RATIOS:
         a.axvline(x.mean() if a is ax[0] else np.log10(x.mean() + 1), color="black", ls="--", lw=1)
     ax[0].text(0.97, 0.95, "dashed = mean", transform=ax[0].transAxes, ha="right", va="top", fontsize=8)
     fig.tight_layout()
-    fig.savefig(FIG / f"a3_dist_{c}.png", dpi=110)
+    fig.savefig(FIG / f"distribution_{c}.png", dpi=110)
     plt.close(fig)
 
 pd.set_option("display.width", 250, "display.max_columns", 30)

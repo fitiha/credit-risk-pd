@@ -1,9 +1,7 @@
 """A2: default rate over time and by term, and the in-progress-loan bias.
 
-Writes reports/figures/a2_default_by_term.png and reports/tables/a2_*.csv.
+Writes reports/target_analysis/{figures,tables}.
 """
-from pathlib import Path
-
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -11,12 +9,11 @@ import pandas as pd
 
 from credit_risk.cleaning import Cleaner
 from credit_risk.io import load_applications
+from credit_risk.reporting import fresh_dirs
 from credit_risk.stats import rate_table
 
 SNAPSHOT = pd.Timestamp("2019-03-01")  # servicing data snapshot date (brief)
-FIG, TAB = Path("reports/figures"), Path("reports/tables")
-FIG.mkdir(parents=True, exist_ok=True)
-TAB.mkdir(parents=True, exist_ok=True)
+FIG, TAB = fresh_dirs("target_analysis")
 
 raw = load_applications()
 d = Cleaner().fit(raw).transform(raw)
@@ -27,12 +24,11 @@ d["matured"] = pd.Series(end, index=d.index) <= SNAPSHOT
 by_half = rate_table(d, ["half", "term"])
 by_half["share_matured"] = by_half.apply(
     lambda r: d[(d.half == r.half) & (d.term == r.term)].matured.mean(), axis=1)
-by_half.to_csv(TAB / "a2_default_by_half_and_term.csv", index=False)
+by_half.to_csv(TAB / "default_by_half_year_and_term.csv", index=False)
 d["month"] = d.issue_d.dt.to_period("M").astype(str)
-rate_table(d, "month").to_csv(TAB / "a2_default_by_month.csv", index=False)
-rate_table(d, ["month", "term"]).to_csv(TAB / "a2_default_by_month_and_term.csv", index=False)
-rate_table(d, "term").to_csv(TAB / "a2_default_by_term.csv", index=False)
-rate_table(d.assign(year=d.issue_d.dt.year), "year").to_csv(TAB / "a2_default_by_year.csv", index=False)
+rate_table(d, "month").to_csv(TAB / "default_by_month.csv", index=False)
+rate_table(d, "term").to_csv(TAB / "default_by_term.csv", index=False)
+rate_table(d.assign(year=d.issue_d.dt.year), "year").to_csv(TAB / "default_by_year.csv", index=False)
 
 fig, ax = plt.subplots(figsize=(8, 4.5))
 halves = sorted(d.half.unique())
@@ -52,5 +48,5 @@ ax.set_title("Default rate by issue date and loan term (bands = 95% confidence i
 ax.set_ylim(0, 42)
 ax.legend(loc="upper left")
 fig.tight_layout()
-fig.savefig(FIG / "a2_default_by_term.png", dpi=150)
+fig.savefig(FIG / "default_rate_by_term_and_half_year.png", dpi=150)
 print(by_half.round(3).to_string(index=False))
