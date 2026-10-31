@@ -1,0 +1,4 @@
+inputs,auc,auc_ci_low,auc_ci_high,gain_over_sub_grade
+sub-grade alone,0.6973,0.6777,0.7169,0.0
+factors alone,0.6515,0.6325,0.6681,-0.0458
+sub-grade + factors,0.7059,0.6869,0.7241,0.0085

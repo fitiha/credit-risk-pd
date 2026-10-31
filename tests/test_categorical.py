@@ -80,3 +80,12 @@ def test_category_grouper_ignores_2015_loans_and_maps_unseen_levels_to_other():
     assert "wedding" not in g.mergers_["purpose"].kept_
     new = df.head(2).assign(purpose="brand_new")
     assert g.transform(new).purpose_group.tolist() == ["other_purpose"] * 2
+
+
+def test_loans_before_october_2013_get_their_own_job_group():
+    df = _loans().assign(issue_d=pd.to_datetime(["2013-05-01"] * 300 + ["2013-11-01"] * 300),
+                         emp_title=["teacher"] * 450 + [None] * 150)
+    out = CategoryGrouper(min_share=0.02).fit(df).transform(df)
+    assert (out.job_group.iloc[:300] == "employer_name_era").all()  # before October 2013, even though the text says "teacher"
+    assert (out.job_group.iloc[300:450] == "education").all()
+    assert (out.job_group.iloc[450:] == "missing").all()

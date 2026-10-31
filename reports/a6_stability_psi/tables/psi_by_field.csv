@@ -1,0 +1,46 @@
+field,kind,psi_2013_vs_2014,psi_2014_vs_2015,reading_2013_vs_2014,reading_2014_vs_2015
+job_group,category,6.2972,0.0033,major shift,stable
+verification_status,category,0.2319,0.0041,moderate shift,stable
+int_rate,platform score,0.0701,0.1921,stable,moderate shift
+fico_mid_treated,numeric,0.0383,0.0022,stable,stable
+factor_public_records,factor score,0.0328,0.0014,stable,stable
+pub_rec_capped,numeric,0.0324,0.0,stable,stable
+grade,category,0.0308,0.0158,stable,stable
+revol_bal_log,numeric,0.0286,0.0028,stable,stable
+acc_open_past_24mths,numeric,0.0278,0.0088,stable,stable
+num_tl_op_past_12m,numeric,0.0271,0.012,stable,stable
+revol_util_treated,numeric,0.0241,0.0089,stable,stable
+revol_bal_to_income_treated,numeric,0.0212,0.0047,stable,stable
+revol_bal_to_income_log,numeric,0.0212,0.0047,stable,stable
+factor_recent_account_opening,factor score,0.0201,0.0131,stable,stable
+installment_log,numeric,0.02,0.0042,stable,stable
+mths_since_last_delinq,numeric,0.0196,0.0016,stable,stable
+recent_accounts_share_treated,numeric,0.0172,0.0152,stable,stable
+dti_treated,numeric,0.0171,0.0142,stable,stable
+factor_account_count,factor score,0.0168,0.0059,stable,stable
+loan_amnt_log,numeric,0.0168,0.0029,stable,stable
+total_rev_hi_lim_log,numeric,0.0168,0.0101,stable,stable
+addr_state_group,category,0.0148,0.0097,stable,stable
+credit_history_months_treated,numeric,0.0142,0.0016,stable,stable
+factor_revolving_utilization,factor score,0.0131,0.0086,stable,stable
+factor_revolving_credit_size,factor score,0.0131,0.0101,stable,stable
+emp_length_years,numeric,0.013,0.0086,stable,stable
+delinq_2yrs_capped,numeric,0.0121,0.0001,stable,stable
+open_acc,numeric,0.011,0.0076,stable,stable
+installment_to_income_treated,numeric,0.0105,0.0042,stable,stable
+pub_rec_bankruptcies_capped,numeric,0.0104,0.0007,stable,stable
+total_acc,numeric,0.0097,0.007,stable,stable
+factor_credit_capacity,factor score,0.0094,0.0095,stable,stable
+factor_loan_size,factor score,0.0078,0.0022,stable,stable
+bc_util_treated,numeric,0.0077,0.0128,stable,stable
+factor_debt_burden,factor score,0.0063,0.0091,stable,stable
+avg_cur_bal_log,numeric,0.0058,0.0051,stable,stable
+annual_inc_log,numeric,0.0037,0.0057,stable,stable
+home_ownership_group,category,0.0037,0.0021,stable,stable
+open_acc_share_treated,numeric,0.0036,0.0122,stable,stable
+loan_to_income_treated,numeric,0.0029,0.0031,stable,stable
+tot_hi_cred_lim_log,numeric,0.0025,0.0058,stable,stable
+mort_acc_capped,numeric,0.0016,0.0072,stable,stable
+purpose_group,category,0.0016,0.0019,stable,stable
+inq_last_6mths_capped,numeric,0.001,0.0348,stable,stable
+term,category,0.001,0.0034,stable,stable

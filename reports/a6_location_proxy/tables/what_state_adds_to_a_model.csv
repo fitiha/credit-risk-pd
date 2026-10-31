@@ -1,0 +1,3 @@
+fold,auc_without_location,auc_with_state,gain,gain_ci_low,gain_ci_high
+fold 1,0.6915,0.6823,-0.0092,-0.0167,-0.0015
+fold 2,0.7238,0.7173,-0.0066,-0.0111,-0.0015

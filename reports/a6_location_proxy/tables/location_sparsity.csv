@@ -1,0 +1,7 @@
+measure,value
+loans,14373.0
+distinct states,47.0
+distinct 3-digit zip prefixes,803.0
+median loans per zip prefix,10.0
+zip prefixes with under 30 loans (%),82.2
+loans in zip prefixes with under 30 loans (%),43.5

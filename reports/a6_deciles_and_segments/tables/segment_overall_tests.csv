@@ -1,0 +1,12 @@
+segment,levels,levels_with_enough_loans,chi_square_p_across_levels,highest_rate,lowest_rate
+term,2,2,1.154e-98,0.2827,0.1324
+grade,7,6,4.311e-170,0.3818,0.04487
+purpose_group,6,5,7.429e-06,0.1997,0.1458
+home_ownership_group,3,3,2.593e-10,0.198,0.1535
+verification_status,3,3,1.129e-19,0.193,0.1271
+emp_length_band,4,4,0.000268,0.1953,0.1547
+income_band,5,5,1.015e-14,0.2134,0.1317
+loan_band,5,5,7.589e-08,0.2012,0.1405
+year,2,2,0.00157,0.1801,0.1595
+job_group,11,11,0.0003311,0.2007,0.1406
+addr_state_group,32,17,0.03827,0.2,0.1342

@@ -55,3 +55,27 @@ def outlier_counts(x):
         out[f"{name}_upper_limit"] = hi
         out[f"{name}_lower_limit"] = lo
     return out
+
+
+def cochran_armitage_trend(scores, defaults, totals):
+    """Test whether the default rate rises (or falls) steadily across ordered groups. Returns (z, two-sided p)."""
+    from scipy.stats import norm
+
+    x, d, n = np.asarray(scores, float), np.asarray(defaults, float), np.asarray(totals, float)
+    p = d.sum() / n.sum()
+    xbar = (n * x).sum() / n.sum()
+    z = ((d - n * p) * (x - xbar)).sum() / np.sqrt(p * (1 - p) * (n * (x - xbar) ** 2).sum())
+    return float(z), float(2 * norm.sf(abs(z)))
+
+
+def level_vs_rest(defaults, totals):
+    """For each level of a segmentation: p-value of its default rate against all other loans (chi-square, Fisher if small)."""
+    from scipy.stats import chi2_contingency, fisher_exact
+
+    d, n = np.asarray(defaults, int), np.asarray(totals, int)
+    out = []
+    for i in range(len(n)):
+        table = [[d[i], n[i] - d[i]], [d.sum() - d[i], (n.sum() - n[i]) - (d.sum() - d[i])]]
+        small = min(min(r) for r in table) < 5
+        out.append(fisher_exact(table)[1] if small else chi2_contingency(table, correction=False)[1])
+    return np.array(out)

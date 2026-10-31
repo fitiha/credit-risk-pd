@@ -1,0 +1,4 @@
+grade_band,loans_per_group,rate_lowest_third,ci_low_1,ci_high_1,rate_highest_third,ci_low_2,ci_high_2,p_value
+A-B,725,0.0745,0.0575,0.0959,0.131,0.1084,0.1576,0.0004
+C,467,0.1413,0.1127,0.1759,0.2575,0.2199,0.2991,0.0
+D-G,485,0.2577,0.2208,0.2985,0.4165,0.3734,0.4609,0.0

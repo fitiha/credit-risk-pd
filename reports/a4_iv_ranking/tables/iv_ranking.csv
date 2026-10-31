@@ -23,8 +23,8 @@ loan_amnt_log,numeric,6,0.0207,weak,input
 open_acc_share_treated,numeric,7,0.0181,useless,input
 addr_state_group,categorical,32,0.018,useless,restricted
 installment_log,numeric,4,0.0176,useless,input
+job_group,categorical,11,0.0159,useless,restricted
 purpose_group,categorical,6,0.0149,useless,input
-job_group,categorical,10,0.0143,useless,restricted
 credit_history_months_treated,numeric,6,0.014,useless,input
 revol_bal_to_income_log,numeric,4,0.0134,useless,input
 open_acc,numeric,7,0.0112,useless,input

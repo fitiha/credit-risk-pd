@@ -1,6 +1,6 @@
 option,groups,smallest_group_loans,share_in_other_pct,iv_on_training_loans,iv_on_later_loans
-keyword_groups,10,439,32.2277,0.0145,0.0153
-top_20_titles,22,23,84.0895,0.0187,0.0208
-top_50_titles,52,11,79.1355,0.0465,0.0287
-top_200_titles,202,4,69.5913,0.1195,0.0381
-missing_flag_only,2,575,0.0,0.0012,0.0006
+keyword_groups,10,200,13.2391,0.0296,0.013
+top_20_titles,22,23,77.8127,0.0306,0.0211
+top_50_titles,52,10,69.9285,0.0695,0.0252
+top_200_titles,202,3,55.5032,0.1884,0.0385
+missing_flag_only,2,360,0.0,0.0023,0.0009
