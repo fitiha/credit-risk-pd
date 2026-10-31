@@ -82,6 +82,7 @@ def order_emp_length(values):
 
 from sklearn.base import BaseEstimator, TransformerMixin
 
+from credit_risk.frames import add_columns
 from credit_risk.io import FIT_CUTOFF
 
 MERGED_FIELDS = ["purpose", "home_ownership", "addr_state", "application_type"]
@@ -103,14 +104,12 @@ class CategoryGrouper(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        d = X.copy()
-        d["job_group"] = group_job_titles(d["emp_title"]).to_numpy()
-        employer_era = (d["issue_d"] < JOB_TITLE_ERA_START) & d["emp_title"].notna()
-        d.loc[employer_era, "job_group"] = "employer_name_era"
-        d["emp_length_years"] = order_emp_length(d["emp_length"]).to_numpy()
+        job = group_job_titles(X["emp_title"])
+        job[(X["issue_d"] < JOB_TITLE_ERA_START) & X["emp_title"].notna()] = "employer_name_era"
+        new = {"job_group": job.to_numpy(), "emp_length_years": order_emp_length(X["emp_length"]).to_numpy()}
         for f, m in self.mergers_.items():
-            d[f"{f}_group"] = m.transform(d[f]).to_numpy()
-        return d
+            new[f"{f}_group"] = m.transform(X[f]).to_numpy()
+        return add_columns(X, new)
 
     def spec_entries(self):
         return {f: m.spec_entry() for f, m in self.mergers_.items()}

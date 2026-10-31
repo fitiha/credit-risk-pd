@@ -12,6 +12,7 @@ from sklearn.decomposition import PCA, FactorAnalysis
 from sklearn.preprocessing import StandardScaler
 
 from credit_risk.factor_fields import FACTOR_FIELDS
+from credit_risk.frames import add_columns
 from credit_risk.io import FIT_CUTOFF
 
 # What each named factor is made of. A fitted factor receives a name only if it loads strongly on these fields.
@@ -53,8 +54,9 @@ class FactorModel(BaseEstimator, TransformerMixin):
         sig = self.signatures or SIGNATURES
         pre = X[X["issue_d"] <= FIT_CUTOFF]
         self.fields_ = fields
-        self.scaler_ = StandardScaler().fit(pre[fields])
-        Z = self.scaler_.transform(pre[fields])
+        values = pre[fields].to_numpy(float)
+        self.scaler_ = StandardScaler().fit(values)
+        Z = self.scaler_.transform(values)
         self.pca_ = PCA(n_components=self.n_components, random_state=0).fit(Z)
         self.pc_sign_ = np.array([1.0 if c[np.abs(c).argmax()] > 0 else -1.0 for c in self.pca_.components_])
         self.fa_ = FactorAnalysis(n_components=self.n_factors, rotation="varimax", random_state=0, max_iter=2000).fit(Z)
@@ -70,15 +72,12 @@ class FactorModel(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        d = X.copy()
-        Z = self.scaler_.transform(d[self.fields_])
+        Z = self.scaler_.transform(X[self.fields_].to_numpy(float))
         pcs = self.pca_.transform(Z) * self.pc_sign_
         scores = (self.fa_.transform(Z) * self.factor_sign_)[:, self.factor_order_]
-        for i in range(pcs.shape[1]):
-            d[f"pc_{i + 1}"] = pcs[:, i]
-        for j, name in enumerate(self.factor_names_):
-            d[f"factor_{name}"] = scores[:, j]
-        return d
+        new = {f"pc_{i + 1}": pcs[:, i] for i in range(pcs.shape[1])}
+        new.update({f"factor_{name}": scores[:, j] for j, name in enumerate(self.factor_names_)})
+        return add_columns(X, new)
 
     def spec_entries(self):
         top = lambda s, k=3: {f: round(float(v), 3) for f, v in s.reindex(s.abs().sort_values(ascending=False).index).head(k).items()}

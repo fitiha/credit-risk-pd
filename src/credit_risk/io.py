@@ -15,6 +15,8 @@ def parse_dates(values: pd.Series) -> pd.Series:
     out = pd.Series(pd.NaT, index=values.index, dtype="datetime64[ns]")
     for fmt in _DATE_FORMATS:
         todo = out.isna() & values.notna()
+        if not todo.any():
+            break
         out[todo] = pd.to_datetime(values[todo], format=fmt, errors="coerce")
     return out
 
