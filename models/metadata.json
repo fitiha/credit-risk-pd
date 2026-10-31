@@ -8,7 +8,7 @@
     "2013-01-01",
     "2014-12-01"
   ],
-  "git_commit": "2826c2d37daebec6bc5ed0f38fac1ee9dc8aa195",
+  "git_commit": "cab83b08e721115b77eebc55060bb977aa055d5f",
   "git_dirty": true,
   "training_data_hash": "4ff160121523e1936f71e23824207c51c881b5e92af3db7e8e5385c85708fc44",
   "training_date": "2026-10-31",
@@ -19,21 +19,21 @@
   },
   "calibration_brier_cross_check": {
     "36": {
-      "platt": 0.11176921590787797,
-      "isotonic": 0.11227659435304685
+      "platt": 0.11177299117387735,
+      "isotonic": 0.11205398658693261
     },
     "60": {
-      "platt": 0.19867591403131918,
-      "isotonic": 0.2000332120099882
+      "platt": 0.19890744291567175,
+      "isotonic": 0.20085050388744474
     }
   },
   "fold_auc": [
-    0.6866,
-    0.7107
+    0.6861,
+    0.7112
   ],
   "fold_brier": [
-    0.1302,
-    0.1408
+    0.1303,
+    0.1407
   ],
   "inputs": [
     "annual_inc_log_woe",
@@ -70,12 +70,12 @@
     "verification_status_woe",
     "term_woe"
   ],
-  "run_id": "20261031-202935",
+  "run_id": "20261031-232004",
   "thresholds": {
     "approve_below": 0.0625,
     "decline_at_or_above": 0.125
   },
-  "reference_group": "1,540 training loans the model approves",
+  "reference_group": "1,548 training loans the model approves",
   "inputs_used": [
     "annual_inc_log_woe",
     "loan_amnt_log_woe",
@@ -114,22 +114,25 @@
     "pub_rec_bankruptcies_capped_woe"
   ],
   "selection": {
-    "lightgbm_mean_auc": 0.6981188777958693,
-    "scorecard_mean_auc": 0.6986245577812769,
-    "chosen_input_set": "raw",
-    "monotone_cost_auc": -0.009633147516213025,
-    "monotone_declared": 22,
+    "lightgbm_mean_auc": 0.6997095091067531,
+    "scorecard_mean_auc": 0.698665812994538,
+    "chosen_input_set": "both",
+    "monotone_cost_auc": -0.004174314198490459,
+    "monotone_declared": 28,
     "monotone_kept": [
-      "annual_inc_capped",
+      "acc_open_past_24mths",
       "avg_cur_bal_capped",
       "bc_util_treated",
       "credit_history_months_treated",
       "delinq_2yrs_capped",
       "dti_treated",
-      "fico_mid_treated",
+      "factor_credit_capacity",
+      "factor_debt_burden",
+      "factor_recent_account_opening",
+      "factor_revolving_credit_size",
+      "factor_revolving_utilization",
       "inq_last_6mths_capped",
       "installment_capped",
-      "installment_to_income_treated",
       "loan_amnt_capped",
       "loan_to_income_treated",
       "num_tl_op_past_12m",
@@ -139,20 +142,19 @@
       "revol_bal_to_income_treated",
       "revol_util_treated",
       "term",
-      "tot_hi_cred_lim_capped",
       "total_rev_hi_lim_capped"
     ],
-    "unconstrained_auc": 0.6895894785866152,
+    "unconstrained_auc": 0.6974853309059303,
     "selected": "woe_scorecard",
     "ablation_lightgbm": {
-      "raw": 0.6981,
+      "raw": 0.697,
       "factors": 0.6967,
-      "both": 0.6995
+      "both": 0.6997
     },
     "ablation_logistic": {
-      "woe_only": 0.6986,
+      "woe_only": 0.6987,
       "factors_plus_category_woe": 0.6975,
-      "woe_plus_factors": 0.6955
+      "woe_plus_factors": 0.6952
     },
     "grade_alone_auc": 0.697310580514792
   }

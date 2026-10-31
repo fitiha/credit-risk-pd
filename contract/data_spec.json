@@ -446,10 +446,10 @@
       "min": 0,
       "max": 1000,
       "nullable": true,
-      "cleaning": "none",
+      "cleaning": "0 with no delinquency in the last two years is the historical coding of 'none on record': set to missing, indicator added",
       "missing_strategy": "missing means no delinquency on record; kept as its own bin in WoE",
       "reliability": "medium",
-      "reliability_reason": "Missing in 46% of loans, and structurally: 99.7% of the missing have no delinquency in the last two years, so missing means none on record. Not linked to default (16.7% vs 17.7%, p = 0.09). A few contradictions: missing although a delinquency was recorded in the last two years (18 loans in the fit window, 67 overall).",
+      "reliability_reason": "Missing in 52% of fit-window loans after recoding (1,497 loans in the historical files carry 0 months with no delinquency in two years, the file's way of saying none on record), and structurally: 99.8% of the missing have no delinquency in the last two years, so missing means none on record. Not linked to default (16.7% vs 17.8%, p = 0.11). A few contradictions: missing although a delinquency was recorded in the last two years (18 loans in the fit window, 67 overall).",
       "role": "input",
       "known_at_application": true
     },
@@ -963,6 +963,7 @@
     "bc_util": "negative values: set to missing, indicator added",
     "fico_range": "low and high swapped when low > high",
     "earliest_cr_line": "later than issue_d: set to missing, indicator added",
+    "mths_since_last_delinq": "0 with no delinquency in the last two years is the historical coding of 'none on record': set to missing, indicator added",
     "median_int_rate_by_sub_grade": {
       "A1": 6.03,
       "A2": 6.49,
@@ -2003,36 +2004,50 @@
     "mths_since_last_delinq": {
       "method": "monotonic_merge",
       "edges": [
-        17.0,
-        73.0
+        10.0,
+        13.0,
+        18.0,
+        41.0
       ],
       "bins": [
         {
           "label": "bin_00",
-          "loans": 2658,
-          "default_rate": 0.1904,
-          "woe": -0.1212
+          "loans": 950,
+          "default_rate": 0.1979,
+          "woe": -0.1702
         },
         {
           "label": "bin_01",
-          "loans": 4625,
-          "default_rate": 0.1706,
-          "woe": 0.0129
+          "loans": 381,
+          "default_rate": 0.1969,
+          "woe": -0.1666
         },
         {
           "label": "bin_02",
-          "loans": 425,
-          "default_rate": 0.1694,
-          "woe": 0.0163
+          "loans": 697,
+          "default_rate": 0.1865,
+          "woe": -0.0978
+        },
+        {
+          "label": "bin_03",
+          "loans": 2409,
+          "default_rate": 0.1719,
+          "woe": 0.0039
+        },
+        {
+          "label": "bin_04",
+          "loans": 2512,
+          "default_rate": 0.1704,
+          "woe": 0.0143
         },
         {
           "label": "missing",
-          "loans": 6665,
-          "default_rate": 0.1667,
-          "woe": 0.0409
+          "loans": 7424,
+          "default_rate": 0.1674,
+          "woe": 0.0359
         }
       ],
-      "iv": 0.0036,
+      "iv": 0.004,
       "strength": "useless",
       "woe_convention": "ln(share repaid / share defaulted); positive = safer",
       "unseen_value_woe": 0.0

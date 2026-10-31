@@ -1,4 +1,4 @@
 method,avg_bins,avg_iv_training,avg_iv_later,pct_fields_one_directional_on_later,smallest_bin_pct,iv_kept_pct
-monotonic_merge,5.5,0.047,0.05,40.0,2.782,107.533
-quantile_10,8.733,0.047,0.049,20.0,3.863,104.859
-tree_6,5.533,0.053,0.049,33.333,2.761,92.782
+monotonic_merge,5.5,0.046,0.05,36.667,2.493,107.618
+quantile_10,8.733,0.047,0.049,20.0,3.863,104.83
+tree_6,5.533,0.053,0.049,33.333,2.525,92.816
