@@ -1,0 +1,4 @@
+component,variance_share_treated,variance_share_untreated,loading_similarity (1 = identical),score_rank_correlation,score_kurtosis_treated,score_kurtosis_untreated,largest_single_score_in_std_units_treated,largest_single_score_in_std_units_untreated
+PC1,0.247,0.214,0.991,0.976,-0.292,5.998,3.516,10.455
+PC2,0.127,0.124,0.967,0.961,0.513,1.297,7.38,8.272
+PC3,0.1,0.098,0.933,0.92,0.993,1.028,4.288,4.688

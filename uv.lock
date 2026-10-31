@@ -515,7 +515,6 @@ name = "credit-risk"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "factor-analyzer" },
     { name = "huggingface-hub" },
     { name = "joblib" },
     { name = "jupyterlab" },
@@ -535,7 +534,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "factor-analyzer", specifier = ">=0.5.1" },
     { name = "huggingface-hub", extras = ["cli"], specifier = ">=2.4.0" },
     { name = "joblib", specifier = ">=1.6.0" },
     { name = "jupyterlab", specifier = ">=4.6.5" },
@@ -604,18 +602,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/52/92/8a611141e42930c0f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/dd/8bc67e7d5ffc1d88aa5af511189dfb76dc4e1e5b808fab186146ef2663e5/executing-2.3.0-py3-none-any.whl", hash = "sha256:736e859c9f8701f11fcf516856f26f562e04776387824b43a35a1dfe21c84122", size = 29393, upload-time = "2026-10-10T14:06:02.777Z" },
 ]
-
-[[package]]
-name = "factor-analyzer"
-version = "0.5.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/28/19/089a65c4cf7ea407ab001846989b44cf83bc488a6e1fe68e950607251720/factor_analyzer-0.5.1.tar.gz", hash = "sha256:03703cd128ee9f91c9bd191a452b06e4a28296b5a24d11823ebb5d8250e8fdf6", size = 42824, upload-time = "2024-02-08T15:10:54.279Z" }
 
 [[package]]
 name = "fastjsonschema"

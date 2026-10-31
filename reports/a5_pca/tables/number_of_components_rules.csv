@@ -1,0 +1,5 @@
+rule,components
+Kaiser (eigenvalue above 1),7
+Parallel analysis (above 95% of noise),7
+Cumulative variance at least 80%,9
+Cumulative variance at least 70%,7

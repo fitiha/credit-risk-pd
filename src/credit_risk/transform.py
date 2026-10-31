@@ -7,17 +7,18 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 from credit_risk.categorical import CategoryGrouper
 from credit_risk.cleaning import Cleaner
+from credit_risk.factors import FactorModel
 from credit_risk.features import FeatureBuilder, FeatureTreater
 from credit_risk.outliers import AmountTreater, CountTreater, RatioTreater
 
 
 class ApplicationTransformer(BaseEstimator, TransformerMixin):
-    """Cleaning, outlier treatment, application-time features and category grouping."""
+    """Cleaning, outlier treatment, application-time features, category grouping, PCA components and factor scores."""
 
     def _new_steps(self):
         return [("cleaner", Cleaner()), ("amounts", AmountTreater()), ("ratios", RatioTreater()),
                 ("counts", CountTreater()), ("features", FeatureBuilder()), ("feature_treater", FeatureTreater()),
-                ("categories", CategoryGrouper())]
+                ("categories", CategoryGrouper()), ("factors", FactorModel())]
 
     def fit(self, X, y=None):
         self.steps_ = self._new_steps()

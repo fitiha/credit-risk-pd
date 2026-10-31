@@ -297,3 +297,82 @@ AUC far above that would be a warning sign, not good news.
 **Two cautions.** `term` (IV 0.20) is partly affected by the in-progress-loan bias described in the target analysis,
 which inflates the default rate of recent 60-month loans. And `grade`/`int_rate` are kept out of the default input
 set, so the strongest legitimate fields are `fico_mid`, `loan_to_income` and the recent-borrowing fields.
+
+## Correlation, PCA and factor analysis
+
+**Fields used** (`src/credit_risk/factor_fields.py`): 22 treated numeric fields: the eight money fields (log), `dti`,
+`revol_util`, `bc_util`, five capped counts, four bureau counts, `fico_mid` and credit history length. Left out on
+purpose: the platform's score (not a model input), restricted fields, ratio features built from other included fields
+(they would only repeat their parts), `mths_since_last_delinq` (46% missing by construction, with no honest numeric
+fill), and categorical fields (handled through WoE). Everything is fitted on 14,373 loans up to the fit cutoff.
+
+### Why reducing dimensions makes sense
+`scripts/a5_correlation_vif.py`, `reports/a5_correlation_vif/`.
+- The Spearman matrix shows blocks of fields that say the same thing: total balances, total credit limit and average
+  balance (rank correlation 0.90 to 0.98); loan amount and installment (0.97); revolving utilization and bank-card
+  utilization (0.80); public records and bankruptcies (0.86); revolving balance and revolving limit (0.78); recent account
+  openings over 12 and 24 months (0.71). 8 of 231 field pairs are at 0.7 or above and 6% are at 0.5 or above.
+- Multicollinearity is serious: 9 of 22 fields have a VIF above 5 and 5 above 10, up to 101 for `tot_cur_bal` (also high:
+  `avg_cur_bal` 62, `tot_hi_cred_lim` 32, `loan_amnt` 23, `installment` 22). Those coefficients would be unstable in a
+  linear model, and the fields mostly repeat one another.
+- Not everything overlaps: `dti`, `delinq_2yrs` and `inq_last_6mths` are close to independent of the rest.
+So a handful of underlying dimensions describes most of the 22 fields, which is exactly the case for reducing them.
+
+### PCA (`scripts/a5_pca.py`, `reports/a5_pca/`)
+Fields are standardized first (fitted on the fit window). Without standardizing, one field (`credit_history_months`, months
+on a large scale) takes 77% of the variance in the first component, which is why raw-scale PCA is not used.
+- **Seven components.** Kaiser (eigenvalue above 1) and parallel analysis (eigenvalue beats 95% of pure noise) both give 7,
+  and they explain 75.3% of the variance (reaching 80% would need 9, but components beyond 7 do not beat noise).
+- **What they are**, from their loadings: PC1 (24.7%) overall credit size and capacity (total credit limit, total and average
+  balances, income); PC2 (12.7%) revolving utilization against recent account opening; PC3 (10.0%) credit score against
+  utilization; PC4 (9.1%) public records with average balance and mortgage accounts; PC5 (7.6%) loan size with public records;
+  PC6 (6.0%) history length and `dti`; PC7 (5.3%) delinquencies.
+- **What the outlier treatment changed.** The structure is almost the same (loading similarity with the untreated PCA: PC1 0.99,
+  PC2 0.97, PC3 0.93), but untreated, PC1 explains 21% instead of 25% and its scores are heavy-tailed: kurtosis 6.0 against -0.3,
+  and one loan sits 10.5 standard deviations out against 3.5 after treatment. The treatment mostly stops a few extreme loans from
+  steering the leading component.
+
+### Factor analysis (`scripts/a5_factor_analysis.py`, `reports/a5_factor_analysis/`)
+Maximum-likelihood factor analysis (scikit-learn) with a varimax rotation; KMO, Bartlett, parallel analysis and promax are
+our own small functions in `src/credit_risk/factor_tools.py`, checked against the reference library (identical KMO and Bartlett)
+and against simulated data with a known factor correlation (the library itself no longer runs with current scikit-learn, so it
+was dropped as a dependency).
+- **Suitability.** Bartlett's test rejects "no shared structure" (chi-square 285,801, p below 1e-300). KMO is 0.705 overall
+  (above the 0.6 minimum). Five fields are below 0.6 (`delinq_2yrs` 0.45, `open_acc` 0.54, `dti` 0.57, `pub_rec` 0.59,
+  `pub_rec_bankruptcies` 0.60): they share little with the rest, so factors will explain them poorly.
+- **Seven factors.** Parallel analysis alone gives 11, but with 14,000 loans nearly any real pattern beats noise: the tenth
+  factor explains 0.4% of the variance with no loading above 0.18. So the count follows a stated rule, the largest number of
+  factors where each has at least two loadings of 0.4 or more, at least 3% of the variance and a 2013-vs-2014 congruence of at
+  least 0.95. Five, six and seven pass; eight fails (3.3% of variance, congruence 0.69); nine to eleven fail. Seven also matches
+  Kaiser and the PCA.
+- **Rotation: varimax.** The factors are mildly related under an oblique (promax) rotation (average correlation 0.18, largest 0.50
+  between loan size and revolving credit size). With varimax no field loads at 0.4 or more on two factors (simple structure is
+  already reached), and its scores are uncorrelated, which suits a model built next to fields we just showed overlap heavily.
+  Limit: one pair of factors is genuinely about half-correlated, which varimax ignores.
+- **The factors**, named only from their loadings (66.2% of the variance in total):
+
+| Factor | Variance | Fields and loadings |
+|---|---|---|
+| `credit_capacity` | 16.2% | average balance 0.97, total balance 0.96, total credit limit 0.93, mortgage accounts 0.53, income 0.46 |
+| `loan_size` | 10.0% | installment 0.96, loan amount 0.95 |
+| `revolving_credit_size` | 8.0% | revolving limit 0.87, revolving balance 0.78 |
+| `account_count` | 7.1% | open accounts 0.92, total accounts 0.59 |
+| `revolving_utilization` | 10.1% | revolving utilization 0.94, bank-card utilization 0.86, FICO score -0.55 |
+| `public_records` | 7.6% | public records 0.88, bankruptcies 0.87 |
+| `recent_account_opening` | 7.2% | accounts opened in 12 months 0.83, in 24 months 0.80 |
+
+  Names are assigned in code from these loadings (`src/credit_risk/factors.py`): a factor gets a name only if it loads at 0.5
+  or more on that name's fields, otherwise it stays unnamed.
+- **Stable.** Loadings fitted on 2013 and on 2014 loans agree (congruence 0.989 to 0.999).
+- **What the factors miss.** Four fields are barely represented (communality: `delinq_2yrs` 0.04, `inq_last_6mths` 0.09,
+  credit history 0.12, `dti` 0.16), so they stay as raw fields next to the factors. The model ablation will show whether the
+  factors help; on their own they predict default modestly (single-factor AUC 0.52 to 0.59; recent account opening is the
+  strongest at 0.589).
+
+### When to prefer factor analysis over PCA here
+PCA keeps as much variance as possible in the fewest components, whatever its source, so it is the better choice for compression
+when only the model's input matters. Factor analysis models only the variance a field *shares* with others and sets aside each
+field's own noise, which gives factors that stand for something a credit officer can name (capacity, utilization, public records),
+and it fits this problem because decisions must be explainable and several fields (`delinq_2yrs`, `inq_last_6mths`) are mostly
+their own noise. So the factors are used for explanation and the scorecard, and the PCA components are kept as the compact
+alternative; the ablation in the ML half reports which of the two, if either, adds anything beyond the raw fields.
