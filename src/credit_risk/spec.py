@@ -157,11 +157,23 @@ def _problems(df, fields, require_all):
     return out
 
 
+NUMERIC_FIELDS = [f["name"] for f in RAW_FIELDS if f["type"] in ("float", "int")]
+
+
 def validate_raw(df):
-    """Check that the raw application columns are present and basically readable, before any cleaning."""
-    miss = [c for c in REQUIRED_COLUMNS if c not in df.columns]
-    if miss:
-        raise ContractViolation("missing required field(s): " + ", ".join(miss))
+    """Before any cleaning: required fields present and filled, numeric fields readable as numbers."""
+    problems = [f"missing required field '{c}'" for c in REQUIRED_COLUMNS if c not in df.columns]
+    for c in REQUIRED_COLUMNS:
+        if c in df.columns and df[c].isna().any():
+            problems.append(f"'{c}' is required but empty in {int(df[c].isna().sum())} row(s)")
+    for c in NUMERIC_FIELDS:
+        if c in df.columns:
+            v = df[c].dropna()
+            bad = pd.to_numeric(v, errors="coerce").isna()
+            if bad.any():
+                problems.append(f"'{c}' must be a number (got {v[bad].iloc[0]!r})")
+    if problems:
+        raise ContractViolation("input breaks the data contract:\n  - " + "\n  - ".join(problems[:12]))
     return df
 
 
