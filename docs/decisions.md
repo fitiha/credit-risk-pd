@@ -266,6 +266,15 @@ reused unchanged at scoring time.
 Note that a pattern that is one-directional on training loans is not always one-directional on the smaller later
 sample (43% of fields); with about 5,000 later loans, neighbouring bins differ by less than the noise.
 
+**Bug found and fixed (31 Oct, during the Part A review).** For fields with many values at their minimum (counts), the
+first bin edge equals that minimum and leaves an empty bin below it. Its default rate of 0 was read as part of the trend,
+which flipped the detected direction and merged real patterns into a single bin. Three fields were hit: `mort_acc`
+(1 bin and IV 0.000 before, 6 bins and IV 0.022 after), `emp_length` (0.001 to 0.010) and `mths_since_last_delinq`
+(0.001 to 0.004). Empty bins are now removed before the direction is judged; `tests/test_binning.py` covers it. The contract
+and the models were rebuilt. Model results moved by at most 0.003 AUC (selected scorecard 0.7185 against grade alone 0.7218),
+because the three fields are weak, and the scorecard still drops `mort_acc` since its weight points the wrong way beside the
+other fields.
+
 ## Information value ranking and the "too good to be true" check
 
 `scripts/a4_iv_ranking.py` computes IV on loans to 2014 for 30 numeric and 7 categorical fields (bins and

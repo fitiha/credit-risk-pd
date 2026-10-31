@@ -37,3 +37,16 @@ def test_missing_values_get_their_own_bin_and_edges_are_reused_unchanged():
     edges = fit_edges(pd.Series(x), y, "monotonic")
     labels = assign_bins([np.nan, -9.0, 9.0], edges)
     assert labels.iloc[0] == MISSING and labels.iloc[1] == "bin_00" and labels.iloc[2] != "bin_00"
+
+
+def test_count_field_with_many_zeros_keeps_its_downward_trend():
+    # Most loans sit at the minimum value (0). The first quantile edge is then 0, which leaves an empty
+    # bin below it. That empty bin must not be read as "default rate 0%" when judging the direction.
+    rng = np.random.default_rng(1)
+    x = rng.choice([0, 1, 2, 3, 4], size=8000, p=[0.4, 0.2, 0.17, 0.13, 0.10]).astype(float)
+    y = (rng.random(8000) < (0.20 - 0.015 * x)).astype(int)  # default rate falls as x rises
+    edges = monotonic_edges(x, y)
+    assert len(edges) >= 1
+    idx = np.searchsorted(edges, x, side="right")
+    rate = np.array([y[idx == i].mean() for i in range(len(edges) + 1)])
+    assert (np.diff(rate) <= 1e-12).all()
