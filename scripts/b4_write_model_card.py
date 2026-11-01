@@ -30,7 +30,8 @@ names = {"grade_baseline": "Platform sub-grade alone (benchmark)",
          "woe_scorecard": "Independent WoE scorecard, no platform score" + (" (selected)" if selected == "woe_scorecard" else " (fallback)"),
          "scorecard_plus_grade": "WoE scorecard plus the platform sub-grade" + (" (selected)" if selected == "scorecard_plus_grade" else " (variant)"),
          "lightgbm": "Gradient boosting, monotone constraints, no platform score (challenger)",
-         "lightgbm_plus_grade": "Gradient boosting plus the platform sub-grade" + (" (selected)" if selected == "lightgbm_plus_grade" else " (challenger)")}
+         "lightgbm_plus_grade": "Gradient boosting plus the platform sub-grade" + (" (selected)" if selected == "lightgbm_plus_grade" else " (challenger)"),
+         "scorecard_boosted_average": "Average of the two sub-grade models" + (" (selected)" if selected == "scorecard_boosted_average" else " (variant)")}
 perf = "\n".join(f"| {names[k]} | {row(k, '2015 all').auc:.3f} | {row(k, '2015 all').gini:.3f} | {row(k, '2015 all').ks:.3f} | {row(k, '2015 all').brier:.3f} | "
                  f"{row(k, '36 months').auc:.3f} | {row(k, '60 months').auc:.3f} |" for k in names)
 quarters = m[(m.model == selected) & m.group.str.startswith("2015Q")]
@@ -48,11 +49,14 @@ policy_sentence = (f"earns {money(pol.loc['grade alone', 'profit_if_approve_and_
 eq_h2 = pd.read_csv(R / "b1_model_evaluation/tables/profit_at_equal_volume_2015H2.csv")
 eq_all = pd.read_csv(R / "b1_model_evaluation/tables/profit_at_equal_volume_2015_all.csv")
 _ph, _pa = eq_h2[eq_h2.is_policy_volume].iloc[0], eq_all[eq_all.is_policy_volume].iloc[0]
+_sig = eq_all[eq_all.ci_low > 0].share_of_loans_funded
+volume_txt = (f"On all of 2015 the advantage is beyond chance from {_sig.min():.0%} of applicants funded upward; at smaller volumes the differences are within chance." if len(_sig)
+              else "At no volume is the difference beyond chance.")
 more = lambda d: f"{money(abs(d))} {'more' if d >= 0 else 'less'}"
 funded_model_share, funded_grade_share = 1 - pol.loc["model", "decline_rate"], 1 - pol.loc["grade alone", "decline_rate"]
 policy_sentence += (f" Part of that gap is volume, not ranking: at the same PD thresholds the model funds {funded_model_share:.0%} of loans and the grade policy {funded_grade_share:.0%} (the two scores spread applicants differently around the 12.5% line). "
                     f"At equal volume, funding the safest {_ph.share_of_loans_funded:.0%} of loans by each score (the volume the model's own thresholds fund, fixed by the policy and not chosen from these results), the model earns {more(_ph.difference)} than the grade on 2015 H2 "
-                    f"(95% interval {money(_ph.ci_low)} to {money(_ph.ci_high)}) and {more(_pa.difference)} on all of 2015 ({money(_pa.ci_low)} to {money(_pa.ci_high)}). Funding only the safest 20% to 35% it earns about the same; the advantage appears when more than about 40% of applicants are funded. "
+                    f"(95% interval {money(_ph.ci_low)} to {money(_ph.ci_high)}) and {more(_pa.difference)} on all of 2015 ({money(_pa.ci_low)} to {money(_pa.ci_high)}). {volume_txt} "
                     f"The tables for every volume are in `reports/b1_model_evaluation/tables/`.")
 _share = at_be.profit / best.profit
 th_sentence = (f"The profit-maximising decline threshold on 2015 H1 was {best.threshold:.1%}, against the break-even {meta['thresholds']['decline_at_or_above']:.1%}; break-even earns {_share:.0%} of that optimum"
@@ -67,28 +71,41 @@ grade_example = f", for example grades {', '.join(_gg.level)} by {_gg.gap.min() 
 direction = "all under-predict" if (big_gaps.gap > 0).all() else "most under-predict"
 ab_l, ab_g = sel["ablation_lightgbm"], sel["ablation_logistic"]
 top_drift = drift[drift.kind != "model output"].psi.max()
-uses_grade = selected in ("scorecard_plus_grade", "lightgbm_plus_grade")
+uses_grade = selected in ("scorecard_plus_grade", "lightgbm_plus_grade", "scorecard_boosted_average")
 g = lambda k, c: gain.loc[k, c]
 _sp = drift.loc[drift.item == "sub_grade_rank", "psi"]
 sub_psi = float(_sp.iloc[0]) if len(_sp) else float("nan")
 model_label = {"woe_scorecard": "independent WoE scorecard", "scorecard_plus_grade": "WoE scorecard plus the platform sub-grade", "lightgbm": "gradient boosting",
-               "lightgbm_plus_grade": "gradient boosting plus the platform sub-grade"}.get(selected, selected.replace("_", " "))
+               "lightgbm_plus_grade": "gradient boosting plus the platform sub-grade", "scorecard_boosted_average": "average of the WoE scorecard and gradient boosting, both with the platform sub-grade"}.get(selected, selected.replace("_", " "))
 desc = {"woe_scorecard": "A logistic regression on the Weight-of-Evidence (WoE) columns of the data contract, with every weight forced to point in the safe direction, calibrated separately for 36- and 60-month loans.",
         "scorecard_plus_grade": "A logistic regression on the Weight-of-Evidence (WoE) columns of the data contract plus the platform's sub-grade. Every WoE weight is forced to point in the safe direction and the sub-grade must raise risk. Calibrated separately for 36- and 60-month loans.",
         "lightgbm": "Gradient boosting with audited monotone constraints on the contract's treated fields, calibrated separately for 36- and 60-month loans.",
-        "lightgbm_plus_grade": "Gradient boosting with audited monotone constraints on the contract's treated fields plus the platform's sub-grade, calibrated separately for 36- and 60-month loans."}[selected]
+        "lightgbm_plus_grade": "Gradient boosting with audited monotone constraints on the contract's treated fields plus the platform's sub-grade, calibrated separately for 36- and 60-month loans.",
+        "scorecard_boosted_average": "The average, in log-odds, of two models that both use the platform's sub-grade: a logistic regression on the contract's Weight-of-Evidence (WoE) columns (every WoE weight forced to point in the safe direction, the sub-grade required to raise risk) and gradient boosting with monotone constraints on the treated fields. Calibrated separately for 36- and 60-month loans. Reason codes add the two models' contributions, each measured against a typical approved applicant, so they add up exactly to the score."}[selected]
 n_woe = sum(c.endswith("_woe") for c in meta["inputs_used"])
 dropped = meta["inputs_dropped_for_wrong_sign"]
 dropped_txt = f" ({', '.join(dropped)} dropped because their weights pointed the wrong way)" if dropped else ""
 never = ("the platform's `int_rate` and grade letter" if uses_grade else "the platform's own `grade`, `sub_grade` and `int_rate`") + ", job group and location (restricted pending a fairness review), and every servicing field"
-inputs_line = (f"Inputs: {len(meta['inputs_used'])} columns" + (f" ({n_woe} WoE columns and the platform's sub-grade)" if n_woe and uses_grade else "") +
+members = meta.get("members", {})
+if members:
+    inputs_line = (f"Inputs: the scorecard uses {len(members.get('logistic', []))} columns ({sum(c.endswith('_woe') for c in members.get('logistic', []))} WoE columns and the platform's sub-grade){dropped_txt}, "
+                   f"the boosted model {len(members.get('lightgbm', []))} treated fields, features, factor scores and the sub-grade; reasons are reported for {len(meta['inputs_used'])} fields. Never inputs: {never}.")
+else:
+  inputs_line = (f"Inputs: {len(meta['inputs_used'])} columns" + (f" ({n_woe} WoE columns and the platform's sub-grade)" if n_woe and uses_grade else "") +
                f" of {len(meta['inputs'])} candidates{dropped_txt}. Never inputs: {never}.")
+gains_txt = ", ".join(f"{x:+.4f}" for x in sel["boost_gain_per_fold"])
+if selected == "scorecard_boosted_average":
+    rule_txt = (f"Neither single model beat the other under the rule fixed in `DESIGN.md` (boosting had to be ahead by 0.005 AUC on average and in every fold; its gains over the scorecard were {gains_txt}). "
+                f"A later screen of about fifteen ideas on the same folds, with its own rule fixed beforehand (a change must add 0.003 AUC on average and in every fold), found one that passed: averaging the two models "
+                f"(mean tuning-fold AUC {sel['average_mean_auc']:.4f} against {sel['scorecard_plus_subgrade_mean_auc']:.4f} for the scorecard). With that many ideas tried, a pass this small can partly be luck. 2015 was never used to choose.")
+else:
+    rule_txt = (f"The boosted model with the sub-grade reaches {g('lightgbm_plus_grade', 'gain'):+.3f}; under the rule fixed in `DESIGN.md` (it must be ahead by 0.005 AUC on the tuning folds on average and in every fold; its gains there were "
+                f"{gains_txt}) it did not replace the scorecard. The choice rested on the tuning folds; 2015 was never used to choose.")
 if uses_grade:
     vs_grade = (f"**Against the platform's grade:** the selected model (which uses the sub-grade) has AUC {g(selected, 'auc_model'):.3f} against {g(selected, 'auc_grade_alone'):.3f} for the grade alone, a gain of {g(selected, 'gain'):+.3f} "
                 f"(95% interval {g(selected, 'ci_low'):+.3f} to {g(selected, 'ci_high'):+.3f}), so it beats the grade measurably. The same scorecard without any platform score is {g('woe_scorecard', 'gain'):+.3f} "
                 f"({g('woe_scorecard', 'ci_low'):+.3f} to {g('woe_scorecard', 'ci_high'):+.3f}): it matches the grade but does not beat it, which is why the sub-grade is allowed in. "
-                f"The boosted model with the sub-grade reaches {g('lightgbm_plus_grade', 'gain'):+.3f}; under the rule fixed in `DESIGN.md` (it must be ahead by 0.005 AUC on the tuning folds on average and in every fold; its gains there were "
-                f"{', '.join(f'{x:+.4f}' for x in sel['boost_gain_per_fold'])}) it did not replace the scorecard. The choice rested on the tuning folds; 2015 was never used to choose.\n"
+                f"{rule_txt}\n"
                 f"The price of the gain is a dependence on the platform's own grading (see the known limits). The platform's interest rate moved by a PSI of 0.19 and 0.16 in two years, which is why the rate is not an input.")
 else:
     vs_grade = (f"**Against the platform's grade:** the selected scorecard's AUC is {g('woe_scorecard', 'gain'):+.3f} against grade alone (95% interval {g('woe_scorecard', 'ci_low'):+.3f} to {g('woe_scorecard', 'ci_high'):+.3f}), so it does not beat it measurably; "
