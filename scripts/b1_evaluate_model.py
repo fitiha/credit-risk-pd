@@ -24,7 +24,7 @@ FIG, TAB = fresh_dirs("b1_model_evaluation")
 cfg = load_config()
 transformer, spec, frame = training_frames(cfg)
 frame = add_grade_rank(frame)
-bundles = {n: joblib.load(f"{cfg['model_dir']}/{n}.joblib") for n in ["grade_baseline", "woe_scorecard", "lightgbm", "scorecard_plus_grade"]}
+bundles = {n: joblib.load(f"{cfg['model_dir']}/{n}.joblib") for n in ["grade_baseline", "woe_scorecard", "lightgbm", "scorecard_plus_grade", "lightgbm_plus_grade"]}
 selected = joblib.load(f"{cfg['model_dir']}/pd_model.joblib").metadata["model"]
 v15 = split(frame, "2015-01-01", "2015-12-31").copy()
 h1, h2 = split(v15, **{"start": cfg["policy_window"]["start"], "end": cfg["policy_window"]["end"]}), split(v15, cfg["report_window"]["start"], cfg["report_window"]["end"])
@@ -47,7 +47,7 @@ pd.DataFrame([{"group": g, "auc_of_the_raw_sub_grade_rank_no_calibration": metri
 rng = np.random.default_rng(0)
 gap = []
 yy = y.to_numpy()
-for n in ["woe_scorecard", "lightgbm", "scorecard_plus_grade"]:
+for n in ["woe_scorecard", "lightgbm", "scorecard_plus_grade", "lightgbm_plus_grade"]:
     a, g = v15[f"pd_{n}"].to_numpy(), v15["pd_grade_baseline"].to_numpy()
     d = [metrics.auc(yy[i], a[i]) - metrics.auc(yy[i], g[i]) for i in (rng.integers(0, len(yy), len(yy)) for _ in range(300))]
     gap.append({"model": n, "auc_model": metrics.auc(yy, a), "auc_grade_alone": metrics.auc(yy, g), "gain": metrics.auc(yy, a) - metrics.auc(yy, g),
@@ -87,6 +87,15 @@ for name, dd in [("model", d2), ("grade alone", d2g)]:
                      "default_rate_of_approved": appr.defaulted.mean(), "profit_if_approve_and_review_funded": float(policy.realised_profit(funded.loan_amnt, funded.defaulted, cfg).sum()),
                      "profit_if_only_approved_funded": float(policy.realised_profit(appr.loan_amnt, appr.defaulted, cfg).sum()), "profit_fund_everyone": float(policy.realised_profit(dd.loan_amnt, dd.defaulted, cfg).sum())})
 pd.DataFrame(cmp_rows).round(4).to_csv(TAB / "policy_model_vs_grade_2015H2.csv", index=False)
+# is the profit gap between the two policies larger than chance? Resample the same 2015 H2 loans (profit of each loan counts only where exactly one policy funds it)
+loan_profit = np.asarray(policy.realised_profit(d2.loan_amnt, d2.defaulted, cfg), float)
+funded_model = np.array(policy.decide(d2.pd, th)) != "decline"
+funded_grade = np.array(policy.decide(d2g.pd, th)) != "decline"
+per_loan_gap = loan_profit * (funded_model.astype(float) - funded_grade.astype(float))
+rng_p = np.random.default_rng(2)
+boot = [per_loan_gap[rng_p.integers(0, len(per_loan_gap), len(per_loan_gap))].sum() for _ in range(2000)]
+pd.DataFrame([{"profit_difference_model_minus_grade": per_loan_gap.sum(), "ci_low": np.percentile(boot, 2.5), "ci_high": np.percentile(boot, 97.5),
+               "loans_funded_by_only_one_policy": int((funded_model != funded_grade).sum())}]).round(0).to_csv(TAB / "profit_difference_model_vs_grade_2015H2.csv", index=False)
 fig, ax = plt.subplots(figsize=(7, 4))
 ax.plot(curve.threshold * 100, curve.profit / 1e6, color="#2a6f97"); ax.axvline(th["decline_at_or_above"] * 100, color="#c1440e", ls="--", label="break-even PD (12.5%)")
 ax.axvline(best_t.threshold * 100, color="grey", ls=":", label=f"best on 2015 H1 ({best_t.threshold * 100:.1f}%)")

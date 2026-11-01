@@ -1,3 +1,3 @@
 policy_driven_by,approval_rate,review_rate,decline_rate,default_rate_of_approved,profit_if_approve_and_review_funded,profit_if_only_approved_funded,profit_fund_everyone
-model,0.1254,0.2732,0.6013,0.0403,1200510.0,1092997.5,-10029725.0
+model,0.1656,0.2842,0.5502,0.042,1574140.0,1292382.5,-10029725.0
 grade alone,0.1855,0.1644,0.65,0.0514,1687590.0,1381580.0,-10029725.0

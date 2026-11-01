@@ -26,8 +26,11 @@ def row(model, group):
     return m[(m.model == model) & (m.group == group)].iloc[0]
 
 
-names = {"grade_baseline": "Platform sub-grade alone (benchmark)", "woe_scorecard": "WoE scorecard (selected)", "lightgbm": "Gradient boosting, monotone constraints (challenger)",
-         "scorecard_plus_grade": "Scorecard plus the platform sub-grade (test variant)"}
+names = {"grade_baseline": "Platform sub-grade alone (benchmark)",
+         "woe_scorecard": "Independent WoE scorecard, no platform score" + (" (selected)" if selected == "woe_scorecard" else " (fallback)"),
+         "scorecard_plus_grade": "WoE scorecard plus the platform sub-grade" + (" (selected)" if selected == "scorecard_plus_grade" else " (variant)"),
+         "lightgbm": "Gradient boosting, monotone constraints, no platform score (challenger)",
+         "lightgbm_plus_grade": "Gradient boosting plus the platform sub-grade" + (" (selected)" if selected == "lightgbm_plus_grade" else " (challenger)")}
 perf = "\n".join(f"| {names[k]} | {row(k, '2015 all').auc:.3f} | {row(k, '2015 all').gini:.3f} | {row(k, '2015 all').ks:.3f} | {row(k, '2015 all').brier:.3f} | "
                  f"{row(k, '36 months').auc:.3f} | {row(k, '60 months').auc:.3f} |" for k in names)
 quarters = m[(m.model == selected) & m.group.str.startswith("2015Q")]
@@ -36,20 +39,68 @@ b = lambda d, c: bands.loc[d, c]
 money = lambda v: f"{'-' if v < 0 else ''}${abs(v) / 1e6:,.2f}M"
 best = curve.loc[curve.profit.idxmax()]
 at_be = curve.iloc[(curve.threshold - meta["thresholds"]["decline_at_or_above"]).abs().argmin()]
-policy_sentence = ("earns " + money(pol.loc["grade alone", "profit_if_approve_and_review_funded"]) + (", which is more, so the model's business advantage over the grade is not shown." if pol.loc["grade alone", "profit_if_approve_and_review_funded"] >= pol.loc["model", "profit_if_approve_and_review_funded"] else ", which is less: the model's policy earns more."))
-th_sentence = (f"The profit-maximising decline threshold on 2015 H1 was {best.threshold:.1%}, against the break-even {meta['thresholds']['decline_at_or_above']:.1%}; the profit curve is flat there "
-               f"(break-even earns {at_be.profit / best.profit:.0%} of the optimum), so the break-even threshold is kept.")
+pdiff = pd.read_csv(R / "b1_model_evaluation/tables/profit_difference_model_vs_grade_2015H2.csv").iloc[0]
+_lo, _hi = pdiff.ci_low, pdiff.ci_high
+policy_sentence = (f"earns {money(pol.loc['grade alone', 'profit_if_approve_and_review_funded'])}, against {money(pol.loc['model', 'profit_if_approve_and_review_funded'])} for the model. "
+                   f"The difference (model minus grade) is {money(pdiff.profit_difference_model_minus_grade)}, with a 95% interval of {money(_lo)} to {money(_hi)}"
+                   + (", which includes zero: the model's policy is not measurably more or less profitable than the grade's, although it ranks applicants better." if _lo < 0 < _hi
+                      else (", so the model's policy earns more." if _lo > 0 else ", so the model's policy earns less.")))
+_share = at_be.profit / best.profit
+th_sentence = (f"The profit-maximising decline threshold on 2015 H1 was {best.threshold:.1%}, against the break-even {meta['thresholds']['decline_at_or_above']:.1%}; break-even earns {_share:.0%} of that optimum"
+               + (", so the curve is flat there and the break-even threshold is kept." if _share >= 0.97 else ", a small loss, and the break-even threshold is kept because it follows from the stated profit assumptions and not from one half-year of data."))
 mono = f"{sel['unconstrained_auc']:.3f} without, {sel['unconstrained_auc'] - sel['monotone_cost_auc']:.3f} with"
 lat_full = lat.iloc[:3]
 inc = fair[fair.segment == "income_band"].set_index("level")
 reg = fair[fair.segment == "region"].set_index("level")
 big_gaps = cal[cal.verdict != "calibrated"]
+_gg = big_gaps[big_gaps.segment == "grade"].sort_values("level")
+grade_example = f", for example grades {', '.join(_gg.level)} by {_gg.gap.min() * 100:.0f} to {_gg.gap.max() * 100:.0f} points" if len(_gg) else ""
+direction = "all under-predict" if (big_gaps.gap > 0).all() else "most under-predict"
 ab_l, ab_g = sel["ablation_lightgbm"], sel["ablation_logistic"]
 top_drift = drift[drift.kind != "model output"].psi.max()
+uses_grade = selected in ("scorecard_plus_grade", "lightgbm_plus_grade")
+g = lambda k, c: gain.loc[k, c]
+_sp = drift.loc[drift.item == "sub_grade_rank", "psi"]
+sub_psi = float(_sp.iloc[0]) if len(_sp) else float("nan")
+model_label = {"woe_scorecard": "independent WoE scorecard", "scorecard_plus_grade": "WoE scorecard plus the platform sub-grade", "lightgbm": "gradient boosting",
+               "lightgbm_plus_grade": "gradient boosting plus the platform sub-grade"}.get(selected, selected.replace("_", " "))
+desc = {"woe_scorecard": "A logistic regression on the Weight-of-Evidence (WoE) columns of the data contract, with every weight forced to point in the safe direction, calibrated separately for 36- and 60-month loans.",
+        "scorecard_plus_grade": "A logistic regression on the Weight-of-Evidence (WoE) columns of the data contract plus the platform's sub-grade. Every WoE weight is forced to point in the safe direction and the sub-grade must raise risk. Calibrated separately for 36- and 60-month loans.",
+        "lightgbm": "Gradient boosting with audited monotone constraints on the contract's treated fields, calibrated separately for 36- and 60-month loans.",
+        "lightgbm_plus_grade": "Gradient boosting with audited monotone constraints on the contract's treated fields plus the platform's sub-grade, calibrated separately for 36- and 60-month loans."}[selected]
+n_woe = sum(c.endswith("_woe") for c in meta["inputs_used"])
+dropped = meta["inputs_dropped_for_wrong_sign"]
+dropped_txt = f" ({', '.join(dropped)} dropped because their weights pointed the wrong way)" if dropped else ""
+never = ("the platform's `int_rate` and grade letter" if uses_grade else "the platform's own `grade`, `sub_grade` and `int_rate`") + ", job group and location (restricted pending a fairness review), and every servicing field"
+inputs_line = (f"Inputs: {len(meta['inputs_used'])} columns" + (f" ({n_woe} WoE columns and the platform's sub-grade)" if n_woe and uses_grade else "") +
+               f" of {len(meta['inputs'])} candidates{dropped_txt}. Never inputs: {never}.")
+if uses_grade:
+    vs_grade = (f"**Against the platform's grade:** the selected model (which uses the sub-grade) has AUC {g(selected, 'auc_model'):.3f} against {g(selected, 'auc_grade_alone'):.3f} for the grade alone, a gain of {g(selected, 'gain'):+.3f} "
+                f"(95% interval {g(selected, 'ci_low'):+.3f} to {g(selected, 'ci_high'):+.3f}), so it beats the grade measurably. The same scorecard without any platform score is {g('woe_scorecard', 'gain'):+.3f} "
+                f"({g('woe_scorecard', 'ci_low'):+.3f} to {g('woe_scorecard', 'ci_high'):+.3f}): it matches the grade but does not beat it, which is why the sub-grade is allowed in. "
+                f"The boosted model with the sub-grade reaches {g('lightgbm_plus_grade', 'gain'):+.3f}; under the rule fixed in `DESIGN.md` (it must be ahead by 0.005 AUC on the tuning folds on average and in every fold; its gains there were "
+                f"{', '.join(f'{x:+.4f}' for x in sel['boost_gain_per_fold'])}) it did not replace the scorecard. The choice rested on the tuning folds; 2015 was never used to choose.\n"
+                f"The price of the gain is a dependence on the platform's own grading (see the known limits). The platform's interest rate moved by a PSI of 0.19 and 0.16 in two years, which is why the rate is not an input.")
+else:
+    vs_grade = (f"**Against the platform's grade:** the selected scorecard's AUC is {g('woe_scorecard', 'gain'):+.3f} against grade alone (95% interval {g('woe_scorecard', 'ci_low'):+.3f} to {g('woe_scorecard', 'ci_high'):+.3f}), so it does not beat it measurably; "
+                f"the boosted challenger is {g('lightgbm', 'gain'):+.3f}. Letting the scorecard use the sub-grade adds {g('scorecard_plus_grade', 'gain'):+.3f} over grade alone: an independent model only matches the grade.")
+fgain = ab_l["both"] - ab_l["raw"]
+if sel["chosen_input_set"] in ("both", "factors"):
+    factor_text = (f"The factor scores helped the boosted model only a little: adding them to the raw fields moved its AUC by {fgain:+.4f}, just above the 0.002 needed to adopt them (a difference this small is within the noise of two folds of 4,000 and 5,000 loans), "
+                   f"so the boosted challenger uses them. They did not help the scorecard (WoE columns alone {ab_g['woe_only']:.4f}, with factor scores {ab_g['woe_plus_factors']:.4f}), so the selected model does not use them. "
+                   f"Eight factor scores alone reach {ab_l['factors']:.4f} against {ab_l['raw']:.4f} for the raw inputs: a compact stand-in, not an improvement.")
+else:
+    factor_text = (f"The factor scores did not add measurable signal: eight factor scores alone reach {ab_l['factors']:.4f} against {ab_l['raw']:.4f} for the raw inputs (a compact stand-in, not an improvement), "
+                   f"and adding them to the raw fields moved the AUC by {fgain:+.4f}, below the 0.002 needed to adopt them.")
+verdict = (f"**Verdict.** The WoE bins helped: a scorecard on them is the best simple model and gives plain reasons. {factor_text} The PCA components were not used. What the data scientist would act on next: "
+           f"build factors from fields not yet represented (`dti`, delinquencies, inquiries have the lowest communality) and test fewer, better-defined factors; the monotone constraints raised the boosted model's time-fold AUC ({mono}) and are kept.")
+dependence = (f"- **Dependence on the platform's grading.** The selected model uses the platform's sub-grade, the output of the platform's own risk model. If the platform changes how it grades, the sub-grade's meaning shifts and the model's scores shift with it. "
+              f"The mix of sub-grades is monitored (PSI 2016 against 2015: {sub_psi:.3f}) together with the observed default rate by grade band, and the independent scorecard (no platform score) is kept as a fallback, switchable with `platform_score: none` in `config/train.yaml`. "
+              f"A reason code can also cite the sub-grade itself; that explains a decision only by pointing at the platform's own rating, which says less than a specific factor such as the credit score, so the reasons list the other factors after it.\n") if uses_grade else ""
 card = f"""# Model card: probability of default for unsecured personal loans
 
-**Model:** {meta['model'].replace('_', ' ')}, version `{meta['model']}-contract{meta['contract_version']}-{meta['training_date']}-{meta['git_commit'][:7]}`.
-A logistic regression on the Weight-of-Evidence (WoE) columns of the data contract, with every weight forced to point in the safe direction, calibrated separately for 36- and 60-month loans.
+**Model:** {model_label}, version `{meta['model']}-contract{meta['contract_version']}-{meta['training_date']}-{meta['git_commit'][:7]}`.
+{desc}
 Trained {meta['training_date']} on {meta['training_loans']:,} loans issued {meta['training_years'][0]} to {meta['training_years'][1]} (contract fit window: up to {meta['fit_cutoff']}). Seed {meta['seed']}.
 
 ## Intended use
@@ -59,7 +110,7 @@ Not for any other product, for applicants unlike those the platform accepted, or
 ## Data
 Historical consumer loans accepted by a lending platform and issued 2013 to 2015, from application, credit-bureau and loan-servicing extracts. Label: charged off or defaulted (1) against fully paid (0); loans still in progress were removed.
 The servicing file is recorded after the loan and is used only to audit the label. The 2016 loans have no labels. The data contract (`contract/`) holds the fitted cleaning, treatment, features, groups, WoE, PCA and factor model, fitted on loans to 2014-12-31.
-Inputs: {len(meta['inputs_used'])} WoE columns of {len(meta['inputs'])} candidates ({', '.join(meta['inputs_dropped_for_wrong_sign'])} dropped because their weights pointed the wrong way). Never inputs: the platform's own `grade`, `sub_grade` and `int_rate`, job group and location (restricted pending a fairness review), and every servicing field.
+{inputs_line}
 
 ## Performance on 2015 loans (out of time; 15,627 loans, default rate {row(selected, '2015 all').default_rate:.1%})
 | Model | AUC | Gini | KS | Brier | AUC, 36 months | AUC, 60 months |
@@ -67,10 +118,7 @@ Inputs: {len(meta['inputs_used'])} WoE columns of {len(meta['inputs'])} candidat
 {perf}
 
 Stable by quarter (selected model, AUC): {qrow}.
-**Against the platform's grade:** the selected scorecard's AUC is {gain.loc['woe_scorecard', 'gain']:+.3f} against grade alone (95% interval {gain.loc['woe_scorecard', 'ci_low']:+.3f} to {gain.loc['woe_scorecard', 'ci_high']:+.3f}), so it does not beat it measurably;
-the boosted challenger is {gain.loc['lightgbm', 'gain']:+.3f} ({gain.loc['lightgbm', 'ci_low']:+.3f} to {gain.loc['lightgbm', 'ci_high']:+.3f}). Letting the scorecard use the sub-grade adds {gain.loc['scorecard_plus_grade', 'gain']:+.3f} over grade alone
-({gain.loc['scorecard_plus_grade', 'ci_low']:+.3f} to {gain.loc['scorecard_plus_grade', 'ci_high']:+.3f}): our fields carry real information beyond the grade, but the grade is itself a strong model of the same data, so an independent model only matches it.
-That independence was a deliberate design choice (the platform's score drifts: its interest rate moved by a PSI of 0.19 and 0.16 in two years); adding it is a business decision, not a technical one.
+{vs_grade}
 Calibration (slope 1 is perfect): overall {slope.loc['all', 'slope']:.2f}, 36 months {slope.loc['36 months', 'slope']:.2f}, 60 months {slope.loc['60 months', 'slope']:.2f}.
 
 ## Decision thresholds and what they do (2015 H2, loans the model had not seen)
@@ -93,9 +141,7 @@ Funding every applicant would have lost {money(-pol.loc['model', 'profit_fund_ev
 | Factor scores only | {ab_l['factors']:.4f} | {ab_g['factors_plus_category_woe']:.4f} (plus loan-structure WoE) |
 | Both | {ab_l['both']:.4f} | {ab_g['woe_plus_factors']:.4f} |
 
-**Verdict.** The WoE bins helped: a scorecard on them is the best simple model and gives plain reasons. The factor scores did not add measurable signal: eight factor scores alone reach {ab_l['factors']:.4f} against {ab_l['raw']:.4f} for the 33 raw inputs
-(a compact stand-in, not an improvement), and adding them to the raw fields moved the AUC by {ab_l['both'] - ab_l['raw']:+.4f}, below the {0.002} needed to adopt them. The PCA components were not used. What the data scientist would act on next:
-build factors from fields not yet represented (`dti`, delinquencies, inquiries have the lowest communality) and test fewer, better-defined factors; the monotone constraints raised the boosted model's time-fold AUC ({mono}) and are kept.
+{verdict}
 
 ## Monitoring and drift
 The 2016 holdout (5,000 loans, scored in `outputs/holdout_scores.csv`) is stable against 2015: PSI of the PD distribution {drift.iloc[0].psi:.3f}, the ten most important inputs at most {top_drift:.3f}
@@ -106,9 +152,9 @@ Outcomes by region and income band are monitored, not modelled: approval rate by
 ## Known limits
 - **Accepted loans only.** Applicants the platform declined are missing, nobody in the data has a FICO score below 660, and the model says nothing reliable about lower scores. Relationships are probably weaker here than in the full applicant pool.
 - **In-progress loans were removed**, which raises the default rate of recent 60-month loans. 60-month results are therefore reported separately and calibrated separately.
-- **Default rates rose** from 2013 to 2015 and the model, trained on 2013 to 2014, under-predicts 2015 risk in places: {len(big_gaps)} of {len(cal)} segments tested differ significantly from their predicted rate (most under-predict, for example grades D and E by 6 to 8 points).
-- **The information ceiling is about 0.70 to 0.73 AUC** on these fields. The grade, built by the platform from the same kind of data, reaches the same level.
-- **WoE inside the contract was fitted on all pre-2015 labels**, so tuning inside 2013 to 2014 is slightly optimistic (about 0.01 AUC); model selection used WoE refitted inside each fold, and the 2015 results above are clean.
+- **Default rates rose** from 2013 to 2015 and the model, trained on 2013 to 2014, under-predicts 2015 risk in places: {len(big_gaps)} of {len(cal)} segments tested differ significantly from their predicted rate ({direction}{grade_example}).
+- **The information ceiling is about 0.70 to 0.73 AUC** on the fields of this data set alone: the platform's grade, built from the same kind of data, reaches the same level, and the sub-grade lifts the selected model to {row(selected, '2015 all').auc:.2f}.
+{dependence}- **WoE inside the contract was fitted on all pre-2015 labels**, so tuning inside 2013 to 2014 is slightly optimistic (about 0.01 AUC); model selection used WoE refitted inside each fold. Settings (regularisation, number of inputs) were also chosen on the tuning folds, so the tuning-fold AUCs ({', '.join(str(x) for x in meta['fold_auc'])} for the selected model) are slightly optimistic; 2015 played no part in any choice and its results above are clean.
 - **Location and job title are not used.** Occupation and place can stand in for characteristics that are not in the data; the data cannot test for it. State is used only for monitoring.
 - **Single-application scoring:** about {lat_full.p50_ms.mean():.0f} ms at the median and {lat_full.p95_ms.mean():.0f} ms at the 95th percentile on a workstation (limit 100 ms).
 - **Application date.** Credit history length is measured from the application date; the demo defaults to mid-2015, inside the period the model was validated on.

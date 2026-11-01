@@ -18,7 +18,7 @@ import pandas as pd
 
 from credit_risk.model import metrics, policy
 from credit_risk.model.data import data_hash, load_config, split, training_frames
-from credit_risk.model.inputs import CONSTRAINTS, INPUT_SETS, REASONS, SCORECARD_COLUMNS, SCORECARD_FIELDS
+from credit_risk.model.inputs import CONSTRAINTS, INPUT_SETS, PLATFORM_COLUMNS, REASONS, SCORECARD_COLUMNS, SCORECARD_FIELDS
 from credit_risk.model.log import ExperimentLog
 from credit_risk.model.models import Calibrator, LgbmPD, LogitPD, PDModel, PerTermCalibrator, add_grade_rank
 from credit_risk.woe import WoEEncoder
@@ -26,7 +26,14 @@ from credit_risk.woe_fields import WOE_CATEGORICAL, WOE_NUMERIC
 
 CATEGORY_WOE = ["purpose_group_woe", "home_ownership_group_woe", "verification_status_woe", "term_woe"]
 MIN_GAIN_TO_ADD_FACTORS = 0.002   # a bigger input set must beat the raw set by this much to be chosen
-MIN_GAIN_FOR_BOOSTING = 0.005     # boosting must beat the scorecard by this much to replace it
+MIN_GAIN_FOR_BOOSTING = 0.005     # boosting must beat the scorecard by this much (on average, and ahead in every fold) to replace it
+def boosted_model_wins(boosted_folds, base_folds, min_gain=MIN_GAIN_FOR_BOOSTING):
+    """The selection rule fixed in DESIGN.md: the boosted model replaces the scorecard only if it is ahead by `min_gain` AUC on average
+    and ahead in every time fold. Returns (wins, gain per fold)."""
+    gains = [float(b) - float(a) for a, b in zip(base_folds, boosted_folds)]
+    return float(np.mean(gains)) >= min_gain and all(g > 0 for g in gains), gains
+
+
 AUC_TIE = 0.001                   # configurations within this AUC are tied and the lower Brier score wins (no class-weight distortion for nothing)
 
 
@@ -75,23 +82,24 @@ class Trainer:
         full = {**params, "learning_rate": self.cfg["lightgbm"]["learning_rate"], "colsample_bytree": self.cfg["lightgbm"]["colsample_bytree"], "subsample": self.cfg["lightgbm"]["subsample"]}
         return lambda: LgbmPD(columns, full, class_weight, monotone, self.seed)
 
-    def tune_lightgbm(self, set_name, monotone=True):
+    def tune_lightgbm(self, set_name, monotone=True, columns=None):
+        columns = columns or INPUT_SETS[set_name]
         grid = self.cfg["lightgbm"]["grid"]
         results = []
         for values, cw in itertools.product(itertools.product(*grid.values()), self.cfg["lightgbm"]["class_weight"]):
             params = dict(zip(grid.keys(), values))
-            aucs, briers, _ = self.evaluate(self.lgbm_factory(INPUT_SETS[set_name], params, cw, monotone))
+            aucs, briers, _ = self.evaluate(self.lgbm_factory(columns, params, cw, monotone))
             self.log.add("lightgbm", set_name, params, cw, monotone, aucs, briers)
-            results.append({"auc": float(np.mean(aucs)), "brier": float(np.mean(briers)), "params": params, "class_weight": cw})
+            results.append({"auc": float(np.mean(aucs)), "brier": float(np.mean(briers)), "params": params, "class_weight": cw, "folds": [float(a) for a in aucs]})
         top = max(r["auc"] for r in results)
         return min((r for r in results if top - r["auc"] <= AUC_TIE), key=lambda r: r["brier"])
 
-    def tune_scorecard(self, columns, name, scale=False):
+    def tune_scorecard(self, columns, name, scale=False, positive=()):
         results = []
         for C, k in itertools.product(self.cfg["scorecard"]["C"], self.cfg["scorecard"]["top_k"] if not scale else [None]):
-            aucs, briers, _ = self.evaluate(lambda C=C, k=k: LogitPD(columns, C, scale, self.seed, nonpositive=not scale, top_k=k), woe_fold=True)
+            aucs, briers, _ = self.evaluate(lambda C=C, k=k: LogitPD(columns, C, set(positive) if positive else scale, self.seed, nonpositive=not scale, top_k=k, positive=positive), woe_fold=True)
             self.log.add("logistic", name, {"C": C, "top_k": k}, None, None, aucs, briers, "WoE refitted inside each fold")
-            results.append({"auc": float(np.mean(aucs)), "brier": float(np.mean(briers)), "C": C, "top_k": k})
+            results.append({"auc": float(np.mean(aucs)), "brier": float(np.mean(briers)), "C": C, "top_k": k, "folds": [float(a) for a in aucs]})
         top = max(r["auc"] for r in results)
         return min((r for r in results if top - r["auc"] <= AUC_TIE), key=lambda r: (r["top_k"] or 99, r["brier"]))  # ties go to the simpler scorecard
 
@@ -150,6 +158,9 @@ class Trainer:
         self.log.add("logistic", "grade_alone", {"C": 1.0}, None, None, g_aucs, g_briers, "benchmark: the platform's sub-grade")
         sc = self.tune_scorecard(SCORECARD_COLUMNS, "woe_scorecard")
         print("scorecard", sc)
+        platform = cfg.get("platform_score", "sub_grade")  # "sub_grade" (DESIGN.md section 11) or "none" (the independent scorecard)
+        scg = self.tune_scorecard(SCORECARD_COLUMNS + PLATFORM_COLUMNS, "scorecard_plus_subgrade", positive=PLATFORM_COLUMNS)
+        print("scorecard + sub-grade", scg)
         # ablation: raw only vs factor scores only vs both, for boosting and for the logistic family
         sets = {s: self.tune_lightgbm(s) for s in INPUT_SETS}
         for s, r in sets.items():
@@ -188,18 +199,30 @@ class Trainer:
         print(f"input set {chosen_set}; constraints declared {len(constrained)}, kept {len(keep)}; cost of the audited set {cost:+.4f} AUC (limit {limit}) -> {'kept' if keep_monotone else 'dropped'}")
         Path("reports").mkdir(exist_ok=True)
         pd.DataFrame(audit).to_csv("reports/monotone_constraint_audit.csv", index=False)
+        # the boosted challenger that also sees the sub-grade (all declared constraints, the sub-grade must raise risk)
+        grade_columns = INPUT_SETS[chosen_set] + PLATFORM_COLUMNS
+        lgg = self.tune_lightgbm("raw_plus_subgrade", monotone=True, columns=grade_columns)
+        print("lightgbm + sub-grade", {k: (round(v, 4) if isinstance(v, float) else v) for k, v in lgg.items()})
         use_lgbm = best["auc"] - sc["auc"] >= MIN_GAIN_FOR_BOOSTING
-        decision = {"lightgbm_mean_auc": best["auc"], "scorecard_mean_auc": sc["auc"], "chosen_input_set": chosen_set, "monotone_cost_auc": cost, "monotone_declared": len(constrained), "monotone_kept": sorted(keep) if keep_monotone else [], "unconstrained_auc": float(np.mean(aucs0)), "selected": "lightgbm" if use_lgbm else "woe_scorecard", "ablation_lightgbm": {k: round(v["auc"], 4) for k, v in sets.items()},
+        # Selection rule written in DESIGN.md before this code: the scorecard plus sub-grade, unless the boosted model beats it by at least
+        # MIN_GAIN_FOR_BOOSTING on average and is ahead in every fold. Results on 2015 are never used here.
+        boost_wins, boost_gains = boosted_model_wins(lgg["folds"], scg["folds"])
+        if platform == "sub_grade":
+            selected_name = "lightgbm_plus_grade" if boost_wins else "scorecard_plus_grade"
+        else:
+            selected_name = "lightgbm" if use_lgbm else "woe_scorecard"
+        decision = {"lightgbm_mean_auc": best["auc"], "scorecard_mean_auc": sc["auc"], "chosen_input_set": chosen_set, "monotone_cost_auc": cost, "monotone_declared": len(constrained), "monotone_kept": sorted(keep) if keep_monotone else [], "unconstrained_auc": float(np.mean(aucs0)), "selected": selected_name, "platform_score": platform, "scorecard_plus_subgrade_mean_auc": scg["auc"], "lightgbm_plus_subgrade_mean_auc": lgg["auc"], "boost_gain_per_fold": [round(g, 4) for g in boost_gains], "ablation_lightgbm": {k: round(v["auc"], 4) for k, v in sets.items()},
                     "ablation_logistic": {k: round(v["auc"], 4) for k, v in lin.items()}, "grade_alone_auc": float(np.mean(g_aucs))}
         # final bundles
         bundles = {}
         wmap = {f"{f}_woe": scorecard_reason_column(f) for f in SCORECARD_FIELDS}
         bundles["grade_baseline"], _ = self.finalize("grade_baseline", lambda: LogitPD(["sub_grade_rank"], 1.0, True, self.seed), ["sub_grade_rank"], {}, "platform sub-grade only")
         bundles["woe_scorecard"], _ = self.finalize("woe_scorecard", lambda: LogitPD(SCORECARD_COLUMNS, sc["C"], False, self.seed, nonpositive=True, top_k=sc["top_k"]), SCORECARD_COLUMNS, wmap, "logistic regression on the contract's WoE columns", woe_fold=True)
-        # test variant promised in DESIGN.md: what the platform's own sub-grade adds if it were allowed as an input (never selected)
-        bundles["scorecard_plus_grade"], _ = self.finalize("scorecard_plus_grade", lambda: LogitPD(SCORECARD_COLUMNS + ["sub_grade_rank"], 0.1, True, self.seed),
-                                                           SCORECARD_COLUMNS + ["sub_grade_rank"], {**wmap, "sub_grade_rank": "sub_grade_rank"},
-                                                           "test variant: the scorecard plus the platform's sub-grade", woe_fold=True)
+        # the scorecard with the platform sub-grade: sign rule on the WoE inputs, the sub-grade standardised and required to raise risk
+        bundles["scorecard_plus_grade"], _ = self.finalize("scorecard_plus_grade", lambda: LogitPD(SCORECARD_COLUMNS + PLATFORM_COLUMNS, scg["C"], set(PLATFORM_COLUMNS), self.seed, nonpositive=True, top_k=scg["top_k"], positive=PLATFORM_COLUMNS),
+                                                           SCORECARD_COLUMNS + PLATFORM_COLUMNS, {**wmap, "sub_grade_rank": "sub_grade_rank"},
+                                                           "the scorecard plus the platform's sub-grade (sign rule on the WoE inputs; the sub-grade must raise risk)", woe_fold=True)
+        bundles["lightgbm_plus_grade"], _ = self.finalize("lightgbm_plus_grade", self.lgbm_factory(grade_columns, lgg["params"], lgg["class_weight"], True), grade_columns, {c: c for c in grade_columns}, "gradient boosting on the raw inputs plus the platform's sub-grade")
         bundles["lightgbm"], _ = self.finalize("lightgbm", self.lgbm_factory(INPUT_SETS[chosen_set], best["params"], best["class_weight"], keep_monotone), INPUT_SETS[chosen_set], {c: c for c in INPUT_SETS[chosen_set]}, f"gradient boosting on the '{chosen_set}' inputs")
         for name, b in bundles.items():
             b.metadata["selection"] = decision

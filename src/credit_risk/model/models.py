@@ -24,28 +24,36 @@ class LogitPD:
 
     kind = "logistic"
 
-    def __init__(self, columns, C=0.1, scale=True, seed=42, nonpositive=False, top_k=None):
+    def __init__(self, columns, C=0.1, scale=True, seed=42, nonpositive=False, top_k=None, positive=()):
         self.columns, self.C, self.scale, self.seed, self.nonpositive, self.top_k = list(columns), C, scale, seed, nonpositive, top_k
+        self.positive = list(positive)  # columns whose weight must be positive (the platform sub-grade: a riskier grade must never lower PD)
 
     def _fit_once(self, X, y):
         self.mean_ = X.mean(axis=0)
-        self.scale_ = X.std(axis=0) if self.scale else np.ones(X.shape[1])
+        if self.scale is True:
+            self.scale_ = X.std(axis=0)
+        elif not self.scale:
+            self.scale_ = np.ones(X.shape[1])
+        else:  # a collection of column names: only those are standardised (WoE columns stay in WoE units, so the scorecard stays readable)
+            self.scale_ = np.array([X[:, i].std() if c in self.scale else 1.0 for i, c in enumerate(self.columns)])
         self.scale_[self.scale_ == 0] = 1
         self.model_ = LogisticRegression(C=self.C, max_iter=5000, random_state=self.seed).fit((X - self.mean_) / self.scale_, y)
 
     def fit(self, df, y):
         self.candidate_columns = list(self.columns)
         self.dropped_ = []
-        if self.top_k and self.top_k < len(self.columns):  # keep the k columns most related to the label in the data this model is fitted on
-            strength = pd.Series({c: abs(np.corrcoef(df[c].to_numpy(float), np.asarray(y))[0, 1]) for c in self.columns}).sort_values(ascending=False)
-            self.columns = [c for c in self.columns if c in set(strength.index[: self.top_k])]
+        free = [c for c in self.columns if c not in self.positive]
+        if self.top_k and self.top_k < len(free):  # keep the k columns most related to the label in the data this model is fitted on (a required column is always kept)
+            strength = pd.Series({c: abs(np.corrcoef(df[c].to_numpy(float), np.asarray(y))[0, 1]) for c in free}).sort_values(ascending=False)
+            self.columns = [c for c in self.columns if c in set(strength.index[: self.top_k]) or c in self.positive]
         while True:
             self._fit_once(df[self.columns].to_numpy(float), y)
             coef = self.model_.coef_[0]
-            if not self.nonpositive or (coef <= 0).all() or len(self.columns) == 1:
+            # size of each sign violation: a required-positive column with a negative weight, or (nonpositive) any other column with a positive one
+            wrong = np.array([-coef[i] if c in self.positive else (coef[i] if self.nonpositive else 0.0) for i, c in enumerate(self.columns)])
+            if wrong.max() <= 0 or len(self.columns) == 1:
                 break
-            worst = int(np.argmax(coef))
-            self.dropped_.append(self.columns.pop(worst))
+            self.dropped_.append(self.columns.pop(int(np.argmax(wrong))))
         return self
 
     def _z(self, df):
