@@ -96,6 +96,33 @@ rng_p = np.random.default_rng(2)
 boot = [per_loan_gap[rng_p.integers(0, len(per_loan_gap), len(per_loan_gap))].sum() for _ in range(2000)]
 pd.DataFrame([{"profit_difference_model_minus_grade": per_loan_gap.sum(), "ci_low": np.percentile(boot, 2.5), "ci_high": np.percentile(boot, 97.5),
                "loans_funded_by_only_one_policy": int((funded_model != funded_grade).sum())}]).round(0).to_csv(TAB / "profit_difference_model_vs_grade_2015H2.csv", index=False)
+
+# the comparison above funds different numbers of loans under the two scores (the same PD threshold funds 45% of loans under the model and 35% under the grade).
+# To isolate ranking from calibration, fund the safest X% of the same loans by each score. Ties (the grade has about 70 distinct values) are broken at random.
+policy_volume = round(float(funded_model.mean()), 3)          # the share of loans the model's own thresholds fund: fixed by the policy, not chosen from these results
+def equal_volume_table(frame, grade_pd, seed):
+    rng_v = np.random.default_rng(seed)
+    sm = frame.pd.to_numpy(float) + rng_v.random(len(frame)) * 1e-9
+    sg = np.asarray(grade_pd, float) + rng_v.random(len(frame)) * 1e-9
+    gain_ = np.asarray(policy.realised_profit(frame.loan_amnt, frame.defaulted, cfg), float)
+    def funded_profit(score, share, idx):
+        k = int(round(share * len(idx)))
+        return gain_[idx[np.argsort(score[idx], kind="stable")[:k]]].sum()
+    everyone = np.arange(len(frame))
+    resamples = [rng_v.integers(0, len(frame), len(frame)) for _ in range(1000)]
+    rows_ = []
+    for share in sorted({0.20, 0.30, 0.35, 0.40, 0.45, 0.50, policy_volume}):
+        diffs = [funded_profit(sm, share, ix) - funded_profit(sg, share, ix) for ix in resamples]
+        pm_, pg_ = funded_profit(sm, share, everyone), funded_profit(sg, share, everyone)
+        rows_.append({"share_of_loans_funded": share, "profit_model": round(pm_), "profit_grade": round(pg_), "difference": round(pm_ - pg_),
+                      "ci_low": round(np.percentile(diffs, 2.5)), "ci_high": round(np.percentile(diffs, 97.5)), "is_policy_volume": share == policy_volume, "loans": len(frame)})
+    return pd.DataFrame(rows_)
+eq_h2 = equal_volume_table(d2, d2g.pd, 3)
+eq_all = equal_volume_table(v15.assign(pd=v15[sel]), v15.pd_grade_baseline, 4)
+eq_h2.to_csv(TAB / "profit_at_equal_volume_2015H2.csv", index=False)
+eq_all.to_csv(TAB / "profit_at_equal_volume_2015_all.csv", index=False)
+print("\nprofit at equal funded volume, model minus grade (2015 H2):\n", eq_h2.to_string(index=False))
+print("\nthe same on all of 2015 (a ranking question: no threshold is involved):\n", eq_all.to_string(index=False))
 fig, ax = plt.subplots(figsize=(7, 4))
 ax.plot(curve.threshold * 100, curve.profit / 1e6, color="#2a6f97"); ax.axvline(th["decline_at_or_above"] * 100, color="#c1440e", ls="--", label="break-even PD (12.5%)")
 ax.axvline(best_t.threshold * 100, color="grey", ls=":", label=f"best on 2015 H1 ({best_t.threshold * 100:.1f}%)")

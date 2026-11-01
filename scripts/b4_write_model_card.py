@@ -45,6 +45,15 @@ policy_sentence = (f"earns {money(pol.loc['grade alone', 'profit_if_approve_and_
                    f"The difference (model minus grade) is {money(pdiff.profit_difference_model_minus_grade)}, with a 95% interval of {money(_lo)} to {money(_hi)}"
                    + (", which includes zero: the model's policy is not measurably more or less profitable than the grade's, although it ranks applicants better." if _lo < 0 < _hi
                       else (", so the model's policy earns more." if _lo > 0 else ", so the model's policy earns less.")))
+eq_h2 = pd.read_csv(R / "b1_model_evaluation/tables/profit_at_equal_volume_2015H2.csv")
+eq_all = pd.read_csv(R / "b1_model_evaluation/tables/profit_at_equal_volume_2015_all.csv")
+_ph, _pa = eq_h2[eq_h2.is_policy_volume].iloc[0], eq_all[eq_all.is_policy_volume].iloc[0]
+more = lambda d: f"{money(abs(d))} {'more' if d >= 0 else 'less'}"
+funded_model_share, funded_grade_share = 1 - pol.loc["model", "decline_rate"], 1 - pol.loc["grade alone", "decline_rate"]
+policy_sentence += (f" Part of that gap is volume, not ranking: at the same PD thresholds the model funds {funded_model_share:.0%} of loans and the grade policy {funded_grade_share:.0%} (the two scores spread applicants differently around the 12.5% line). "
+                    f"At equal volume, funding the safest {_ph.share_of_loans_funded:.0%} of loans by each score (the volume the model's own thresholds fund, fixed by the policy and not chosen from these results), the model earns {more(_ph.difference)} than the grade on 2015 H2 "
+                    f"(95% interval {money(_ph.ci_low)} to {money(_ph.ci_high)}) and {more(_pa.difference)} on all of 2015 ({money(_pa.ci_low)} to {money(_pa.ci_high)}). Funding only the safest 20% to 35% it earns about the same; the advantage appears when more than about 40% of applicants are funded. "
+                    f"The tables for every volume are in `reports/b1_model_evaluation/tables/`.")
 _share = at_be.profit / best.profit
 th_sentence = (f"The profit-maximising decline threshold on 2015 H1 was {best.threshold:.1%}, against the break-even {meta['thresholds']['decline_at_or_above']:.1%}; break-even earns {_share:.0%} of that optimum"
                + (", so the curve is flat there and the break-even threshold is kept." if _share >= 0.97 else ", a small loss, and the break-even threshold is kept because it follows from the stated profit assumptions and not from one half-year of data."))
