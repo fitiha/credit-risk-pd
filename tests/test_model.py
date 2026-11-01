@@ -102,7 +102,9 @@ def test_a_model_built_on_another_contract_version_is_refused(tmp_path):
 
 def test_nothing_forbidden_reaches_the_model(predictor):
     used = {c.removesuffix("_woe") for c in predictor.bundle.model.columns}
-    forbidden = {"int_rate", "grade", "sub_grade", "sub_grade_rank", "job_group", "addr_state", "addr_state_group", "zip_code", "defaulted",
+    # the platform's sub-grade is the one platform score that may be an input (DESIGN.md section 11); the rate, the grade letter, restricted fields
+    # and everything recorded after the loan never are
+    forbidden = {"int_rate", "grade", "sub_grade", "job_group", "addr_state", "addr_state_group", "zip_code", "defaulted",
                  "total_pymnt", "total_rec_prncp", "total_rec_int", "recoveries", "last_pymnt_d", "last_pymnt_amnt", "last_credit_pull_d",
                  "last_fico_range_high", "last_fico_range_low", "debt_settlement_flag", "bureau_recovery_flag"}
     assert not used & forbidden, used & forbidden
@@ -155,3 +157,52 @@ def test_a_declined_applicant_is_told_why_and_an_approved_one_needs_few_reasons(
     assert all("typical approved applicant" in r or r.split(":")[0] in ("Loan purpose", "Home ownership", "Income verification") for r in declined["reason_codes"])
     assert len(predictor.predict(example("low_risk"))["reason_codes"]) <= len(declined["reason_codes"])
     assert predictor.predict(example("borderline"))["reason_codes"]  # a loan sent to review is also told what to look at
+
+
+def test_the_platform_sub_grade_is_the_only_platform_score_in_the_model(predictor):
+    used = {c.removesuffix("_woe") for c in predictor.bundle.model.columns}
+    assert used & {"sub_grade_rank"} == ({"sub_grade_rank"} if predictor.bundle.metadata["selection"]["platform_score"] == "sub_grade" else set())
+    assert not used & {"int_rate", "grade"}
+
+
+def test_the_sub_grade_pushes_risk_in_the_safe_direction_and_wrong_signed_weights_are_dropped():
+    import numpy as np, pandas as pd
+    from credit_risk.model.models import LogitPD
+
+    rng = np.random.default_rng(0)
+    n = 6000
+    grade = rng.integers(0, 35, n).astype(float)
+    good = rng.normal(size=n)       # a WoE-like column: higher means safer (its weight should be negative)
+    bad = rng.normal(size=n)        # pure noise tied to the label the wrong way round below
+    y = (rng.random(n) < 1 / (1 + np.exp(-(-1.5 + 0.06 * grade - 0.5 * good)))).astype(int)
+    X = pd.DataFrame({"sub_grade_rank": grade, "good_woe": good, "bad_woe": bad + 0.9 * y})  # bad_woe is raised by default: a positive weight
+    m = LogitPD(["sub_grade_rank", "good_woe", "bad_woe"], 1.0, {"sub_grade_rank"}, 1, nonpositive=True, positive=["sub_grade_rank"]).fit(X, y)
+    coef = dict(zip(m.columns, m.model_.coef_[0]))
+    assert coef["sub_grade_rank"] > 0 and coef["good_woe"] < 0
+    assert "bad_woe" in m.dropped_ and "bad_woe" not in m.columns
+
+
+def test_a_required_positive_column_with_the_wrong_sign_is_dropped_and_scaling_is_per_column():
+    import numpy as np, pandas as pd
+    from credit_risk.model.models import LogitPD
+
+    rng = np.random.default_rng(1)
+    n = 4000
+    grade = rng.integers(0, 35, n).astype(float)
+    y = (rng.random(n) < 1 / (1 + np.exp(-(0.5 - 0.08 * grade)))).astype(int)   # a "grade" that lowers risk, which must not be allowed
+    X = pd.DataFrame({"sub_grade_rank": grade, "a_woe": rng.normal(size=n)})
+    m = LogitPD(["sub_grade_rank", "a_woe"], 1.0, {"sub_grade_rank"}, 1, nonpositive=True, positive=["sub_grade_rank"]).fit(X, y)
+    assert "sub_grade_rank" in m.dropped_
+    m2 = LogitPD(["sub_grade_rank", "a_woe"], 1.0, {"sub_grade_rank"}, 1).fit(X, y)
+    assert m2.scale_[1] == 1.0 and abs(m2.scale_[0] - grade.std()) < 1e-6      # only the named column is standardised
+
+
+def test_the_boosted_model_replaces_the_scorecard_only_if_ahead_on_average_and_in_every_fold():
+    from credit_risk.model.train import boosted_model_wins
+
+    assert boosted_model_wins([0.71, 0.73], [0.70, 0.72])[0] is True                 # +0.01 in both folds
+    assert boosted_model_wins([0.710, 0.713], [0.700, 0.720])[0] is False            # ahead in fold 1, behind in fold 2
+    assert boosted_model_wins([0.720, 0.719], [0.700, 0.720])[0] is False            # +0.0095 on average but behind in one fold
+    assert boosted_model_wins([0.703, 0.724], [0.700, 0.720])[0] is False            # ahead in both, but only +0.0035 on average
+    wins, gains = boosted_model_wins([0.7007, 0.7175], [0.6901, 0.7204])             # the tuning-fold figures from DESIGN.md section 11
+    assert wins is False and abs(gains[0] - 0.0106) < 1e-4

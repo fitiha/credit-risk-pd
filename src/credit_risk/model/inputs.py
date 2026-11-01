@@ -5,6 +5,8 @@ fields (job group, location) and all servicing fields are never inputs.
 """
 import pandas as pd
 
+from credit_risk.spec import SUB_GRADES
+
 CATEGORICAL = ["purpose_group", "home_ownership_group", "verification_status"]
 LOAN_STRUCTURE = ["term"]  # 36 or 60 months, numeric
 
@@ -41,7 +43,9 @@ INPUT_SETS = {
     "factors": CATEGORICAL + LOAN_STRUCTURE + FACTOR_COLUMNS,
     "both": CATEGORICAL + LOAN_STRUCTURE + list(RAW_NUMERIC) + FACTOR_COLUMNS,
 }
-CONSTRAINTS = {**RAW_NUMERIC, **FACTOR_CONSTRAINTS, "term": +1}
+# the platform's sub-grade (A1 = 0 ... G5 = 34) is the one platform score allowed as an input (DESIGN.md section 11); a riskier grade must never lower PD
+PLATFORM_COLUMNS = ["sub_grade_rank"]
+CONSTRAINTS = {**RAW_NUMERIC, **FACTOR_CONSTRAINTS, "term": +1, "sub_grade_rank": +1}
 
 
 def monotone_vector(columns, enabled=True):
@@ -73,6 +77,10 @@ def _score(v):
     return f"{v:+.1f}"
 
 
+def _subgrade(v):
+    return SUB_GRADES[int(round(v))]
+
+
 REASONS = {
     "annual_inc_capped": ("Annual income", _money), "loan_amnt_capped": ("Loan amount", _money), "installment_capped": ("Monthly installment", _money),
     "revol_bal_capped": ("Revolving balance", _money), "tot_cur_bal_capped": ("Total current balances", _money),
@@ -91,7 +99,7 @@ REASONS = {
     "open_acc_share_treated": ("Share of accounts that are open", _ratio), "recent_accounts_share_treated": ("Share of accounts opened in the last 24 months", _ratio),
     "term": ("Loan term (months)", _num), "purpose_group": ("Loan purpose", str), "home_ownership_group": ("Home ownership", str),
     "verification_status": ("Income verification", str),
-    "sub_grade_rank": ("Platform sub-grade (A1 = 0 ... G5 = 34)", _num),
+    "sub_grade_rank": ("Platform risk sub-grade", _subgrade),
     "factor_credit_capacity": ("Credit capacity score", _score), "factor_loan_size": ("Loan size score", _score),
     "factor_revolving_credit_size": ("Revolving credit size score", _score), "factor_account_count": ("Account count score", _score),
     "factor_revolving_utilization": ("Revolving utilization score", _score), "factor_public_records": ("Public records score", _score),

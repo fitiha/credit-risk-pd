@@ -34,3 +34,7 @@ lightgbm:
 scorecard:
   top_k: [8, 12, 16, 20, 33]   # keep only the k WoE columns most related to default (chosen on the time folds)
   C: [0.03, 0.1, 0.3, 1.0, 3.0]  # weights are also forced to point in the safe direction (see LogitPD)
+
+# which platform score the model may use: "sub_grade" (the scorecard plus the platform's sub-grade, see DESIGN.md section 11)
+# or "none" (the independent scorecard, the fallback if the platform's grading is no longer available or trusted)
+platform_score: sub_grade
