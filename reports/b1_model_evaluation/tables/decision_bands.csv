@@ -1,7 +1,7 @@
 window,decision,loans,default_rate,mean_pd,amount,profit_if_funded,share_of_loans,profit_per_dollar
-H1 (thresholds checked here),approve,980,0.0449,0.045,13622125.0,864312.5,0.146,0.0634
-H1 (thresholds checked here),review,1764,0.0981,0.0923,23446975.0,379697.5,0.2628,0.0162
-H1 (thresholds checked here),decline,3968,0.2843,0.272,61105225.0,-8244677.5,0.5912,-0.1349
-H2 (reported),approve,1476,0.042,0.0436,20433625.0,1292382.5,0.1656,0.0632
-H2 (reported),review,2534,0.1113,0.0931,32807975.0,281757.5,0.2842,0.0086
-H2 (reported),decline,4905,0.2956,0.2628,76471350.0,-11603865.0,0.5502,-0.1517
+H1 (thresholds checked here),approve,1043,0.047,0.0452,14833100.0,921410.0,0.1554,0.0621
+H1 (thresholds checked here),review,1654,0.0985,0.0911,22261475.0,334647.5,0.2464,0.015
+H1 (thresholds checked here),decline,4015,0.2822,0.272,61079750.0,-8256725.0,0.5982,-0.1352
+H2 (reported),approve,1569,0.044,0.0442,22355050.0,1383065.0,0.176,0.0619
+H2 (reported),review,2394,0.1128,0.0927,31069900.0,169470.0,0.2685,0.0055
+H2 (reported),decline,4952,0.2938,0.2635,76288000.0,-11582260.0,0.5555,-0.1518
