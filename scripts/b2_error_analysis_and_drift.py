@@ -99,12 +99,14 @@ Path("outputs").mkdir(exist_ok=True)
 hold[["id", "pd"]].assign(pd=lambda t: t.pd.round(6)).to_csv("outputs/holdout_scores.csv", index=False)
 hold["decision"] = policy.decide(hold.pd, th)
 used = [c.removesuffix("_woe") for c in bundle.model.columns]
-imp = pd.Series(np.abs(bundle.model.model_.coef_[0]) * bundle.model.scale_ if hasattr(bundle.model, "model_") else 0, index=used).sort_values(ascending=False)
+# importance = the average size of each input's contribution on 2015 loans (works for any model: scorecard, boosting or their average)
+imp = pd.Series(np.abs(bundle.model.contributions(v15.sample(min(3000, len(v15)), random_state=0))).mean(axis=0), index=used).sort_values(ascending=False)
 top10 = list(imp.index[:10])
+watch = top10 + (["sub_grade_rank"] if "sub_grade_rank" in used and "sub_grade_rank" not in top10 else [])  # the platform score is always monitored (DESIGN.md)
 rows = [{"item": "PD distribution", "kind": "model output", "psi": numeric_psi(v15.pd, hold.pd)}]
-for c in top10:
+for c in watch:
     f = numeric_psi if pd.api.types.is_numeric_dtype(hold[c]) else categorical_psi
-    rows.append({"item": c, "kind": "top-10 input", "psi": f(v15[c], hold[c])})
+    rows.append({"item": c, "kind": "top-10 input" if c in top10 else "platform score (always monitored)", "psi": f(v15[c], hold[c])})
 drift = pd.DataFrame(rows)
 drift["alert"] = drift.psi.map(lambda v: "act (above 0.25)" if v >= .25 else "investigate (0.10 to 0.25)" if v >= .1 else "stable (below 0.10)")
 drift.round(4).to_csv(TAB / "holdout_drift_psi.csv", index=False)
