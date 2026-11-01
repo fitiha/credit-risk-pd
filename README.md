@@ -21,7 +21,7 @@ uv run hf download metasebiya21/credit-risk-take-home --repo-type dataset --loca
 ## Run
 ```bash
 bash scripts/run_all.sh                                   # everything, from the raw data, in order (a few minutes)
-uv run pytest -q                                          # 137 tests (some need data/, the rest run without it)
+uv run pytest -q                                          # 141 tests (some need data/, the rest run without it)
 uv run python scripts/verify_contract.py                  # the transform reproduces the 50 reference rows to 1e-6 (needs no data)
 uv run python -m credit_risk.model.train --config config/train.yaml                  # train from the contract, one command
 uv run python -m credit_risk.model.predict --json examples/borderline.json           # score one application: pd, decision, version, reasons
