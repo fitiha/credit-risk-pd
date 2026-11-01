@@ -5,11 +5,11 @@ A probability-of-default (PD) model for unsecured personal loans, built in two p
 **Part B (ML engineer):** build the model on that contract (grade baseline, WoE scorecard, monotone gradient boosting), evaluate it out of time, set a profit-based decision policy, and serve it with reason codes, tests and a demo.
 
 ## Results in five lines
-- 39 data problems found and fixed or flagged (`docs/issue_log.md`), including two columns that reveal the outcome and about 1,500 mis-scaled amounts; one unit error in the 2016 file would have corrupted every holdout score.
-- Out-of-time AUC on 2015 loans: scorecard 0.718, boosted challenger 0.725, platform grade alone 0.722. The independent model **matches the grade but does not measurably beat it**; allowing the grade as an input gives 0.731.
-- Predictions are well calibrated per term (slopes 0.96 and 1.02); thresholds from the profit assumptions: approve below 6.25%, decline at 12.5% or more.
-- The 2016 holdout is stable against 2015 (PSI 0.014 for the PD); scores are in `outputs/holdout_scores.csv`.
-- A scored application takes about 34 ms (limit 100 ms). The factor scores added no measurable signal over the raw fields; the ablation says so (`model_card.md`).
+- 39 data problems found and fixed or flagged (`docs/issue_log.md`), including two columns that reveal the outcome and about 1,500 mis-scaled amounts; one unit error in the 2016 file would have corrupted every holdout score and a guard now rejects it.
+- Out-of-time AUC on 2015 loans (never used to choose anything): **0.734 for the selected model, the WoE scorecard plus the platform's sub-grade, against 0.722 for the platform's grade alone** (gain +0.012, 95% interval +0.007 to +0.016). Without any platform score the scorecard reaches 0.718 and only matches the grade; gradient boosting reaches 0.735 with the sub-grade, which is not enough to replace the scorecard under the rule fixed in `DESIGN.md`. The profit policy at the 6.25% and 12.5% thresholds earns about the same as one driven by the grade (the difference is within noise).
+- Predictions are calibrated per term (slopes 0.97 and 0.92); thresholds from the profit assumptions: approve below 6.25%, decline at 12.5% or more; the approved band is 16.6% of 2015 H2 loans with a 4.2% default rate.
+- The 2016 holdout is stable against 2015 (PSI 0.007 for the PD); scores are in `outputs/holdout_scores.csv`. The price of the sub-grade is a dependence on the platform's grading, monitored and with an independent fallback (`platform_score: none`).
+- A scored application takes about 35 ms (limit 100 ms). The factor scores helped the boosted model by +0.003 AUC and the scorecard not at all (`model_card.md`).
 
 ## Setup
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12 (uv installs it). Dependencies are pinned in `uv.lock`.
