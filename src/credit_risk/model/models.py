@@ -103,6 +103,54 @@ class LgbmPD:
         return self.model_.booster_.predict(self._prep(df), pred_contrib=True)[:, :-1]
 
 
+class LogOddsAverage:
+    """The average of several models in log-odds (the scorecard and the boosted model). Kept explainable: each member's contribution is measured
+    against the same reference, a typical approved applicant, so the averaged contributions add up exactly to the averaged log-odds minus their
+    average over approved applicants. Contributions are reported per input field (`field_of` maps a member's column, for example a WoE column,
+    to the field a reason is written about)."""
+
+    kind = "average"
+
+    def __init__(self, members, field_of):
+        self.members, self.field_of = list(members), dict(field_of)
+
+    def fit(self, df, y):
+        for m in self.members:
+            m.fit(df, y)
+        self.columns = list(dict.fromkeys(self.field_of.get(c, c) for m in self.members for c in m.columns))
+        return self
+
+    @staticmethod
+    def _logit(p):
+        p = np.clip(np.asarray(p, float), 1e-9, 1 - 1e-9)
+        return np.log(p / (1 - p))
+
+    def predict(self, df):
+        z = np.mean([self._logit(m.predict(df)) for m in self.members], axis=0)
+        return 1 / (1 + np.exp(-z))
+
+    @property
+    def dropped_(self):
+        return [c for m in self.members for c in getattr(m, "dropped_", [])]
+
+    def set_reference(self, approved):
+        """Make every member explain against the same reference: the applicants the model approves."""
+        for m in self.members:
+            if getattr(m, "kind", "") == "logistic":
+                m.reference_ = approved[m.columns].to_numpy(float).mean(axis=0)
+            else:
+                m.contrib_reference_ = m.contributions(approved).mean(axis=0)
+
+    def contributions(self, df):
+        index = {f: i for i, f in enumerate(self.columns)}
+        out = np.zeros((len(df), len(self.columns)))
+        for m in self.members:
+            c = m.contributions(df) - getattr(m, "contrib_reference_", 0.0)
+            for j, col in enumerate(m.columns):
+                out[:, index[self.field_of.get(col, col)]] += c[:, j] / len(self.members)
+        return out
+
+
 class Calibrator:
     """Maps a model's score to a probability. Platt scaling (logistic on the log-odds) or isotonic regression."""
 
