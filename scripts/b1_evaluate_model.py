@@ -24,7 +24,7 @@ FIG, TAB = fresh_dirs("b1_model_evaluation")
 cfg = load_config()
 transformer, spec, frame = training_frames(cfg)
 frame = add_grade_rank(frame)
-bundles = {n: joblib.load(f"{cfg['model_dir']}/{n}.joblib") for n in ["grade_baseline", "woe_scorecard", "lightgbm", "scorecard_plus_grade", "lightgbm_plus_grade"]}
+bundles = {n: joblib.load(f"{cfg['model_dir']}/{n}.joblib") for n in ["grade_baseline", "woe_scorecard", "lightgbm", "scorecard_plus_grade", "lightgbm_plus_grade", "scorecard_boosted_average"]}
 selected = joblib.load(f"{cfg['model_dir']}/pd_model.joblib").metadata["model"]
 v15 = split(frame, "2015-01-01", "2015-12-31").copy()
 h1, h2 = split(v15, **{"start": cfg["policy_window"]["start"], "end": cfg["policy_window"]["end"]}), split(v15, cfg["report_window"]["start"], cfg["report_window"]["end"])
@@ -47,7 +47,7 @@ pd.DataFrame([{"group": g, "auc_of_the_raw_sub_grade_rank_no_calibration": metri
 rng = np.random.default_rng(0)
 gap = []
 yy = y.to_numpy()
-for n in ["woe_scorecard", "lightgbm", "scorecard_plus_grade", "lightgbm_plus_grade"]:
+for n in ["woe_scorecard", "lightgbm", "scorecard_plus_grade", "lightgbm_plus_grade", "scorecard_boosted_average"]:
     a, g = v15[f"pd_{n}"].to_numpy(), v15["pd_grade_baseline"].to_numpy()
     d = [metrics.auc(yy[i], a[i]) - metrics.auc(yy[i], g[i]) for i in (rng.integers(0, len(yy), len(yy)) for _ in range(300))]
     gap.append({"model": n, "auc_model": metrics.auc(yy, a), "auc_grade_alone": metrics.auc(yy, g), "gain": metrics.auc(yy, a) - metrics.auc(yy, g),

@@ -206,3 +206,24 @@ def test_the_boosted_model_replaces_the_scorecard_only_if_ahead_on_average_and_i
     assert boosted_model_wins([0.703, 0.724], [0.700, 0.720])[0] is False            # ahead in both, but only +0.0035 on average
     wins, gains = boosted_model_wins([0.7007, 0.7175], [0.6901, 0.7204])             # the tuning-fold figures from DESIGN.md section 11
     assert wins is False and abs(gains[0] - 0.0106) < 1e-4
+
+
+def test_the_averaged_model_explains_exactly_what_it_predicts():
+    import numpy as np, pandas as pd
+    from credit_risk.model.models import LgbmPD, LogOddsAverage, LogitPD
+
+    rng = np.random.default_rng(0)
+    n = 5000
+    X = pd.DataFrame({"a": rng.normal(size=n), "b": rng.normal(size=n), "c": rng.normal(size=n)})
+    X["a_woe"], X["b_woe"] = -X.a, -X.b                      # WoE columns of fields a and b (higher WoE = safer)
+    y = (rng.random(n) < 1 / (1 + np.exp(-(-1.4 + 0.8 * X.a + 0.5 * X.b + 0.3 * X.c)))).astype(int)
+    lg = LgbmPD(["a", "b", "c"], dict(num_leaves=7, n_estimators=60, learning_rate=0.1, min_child_samples=50), None, False, 0)
+    avg = LogOddsAverage([LogitPD(["a_woe", "b_woe"], 1.0, False, 0, nonpositive=True), lg], {"a_woe": "a", "b_woe": "b"}).fit(X, y)
+    assert avg.columns == ["a", "b", "c"]
+    approved = X[avg.predict(X) < np.quantile(avg.predict(X), 0.3)]
+    avg.set_reference(approved)
+    z = avg._logit(avg.predict(X.iloc[:200]))
+    z_ref = avg._logit(np.vstack([m.predict(approved) for m in avg.members]).T).mean(axis=1).mean()   # mean averaged log-odds of the approved
+    contrib = avg.contributions(X.iloc[:200])
+    assert np.allclose(contrib.sum(axis=1), z - z_ref, atol=1e-6)    # the reasons add up to the score, exactly
+    assert contrib[:, 0].std() > 0 and contrib[:, 2].std() > 0        # field c comes only from the boosted model and still gets its share

@@ -20,7 +20,7 @@ from credit_risk.model import metrics, policy
 from credit_risk.model.data import data_hash, load_config, split, training_frames
 from credit_risk.model.inputs import CONSTRAINTS, INPUT_SETS, PLATFORM_COLUMNS, REASONS, SCORECARD_COLUMNS, SCORECARD_FIELDS
 from credit_risk.model.log import ExperimentLog
-from credit_risk.model.models import Calibrator, LgbmPD, LogitPD, PDModel, PerTermCalibrator, add_grade_rank
+from credit_risk.model.models import Calibrator, LgbmPD, LogitPD, LogOddsAverage, PDModel, PerTermCalibrator, add_grade_rank
 from credit_risk.woe import WoEEncoder
 from credit_risk.woe_fields import WOE_CATEGORICAL, WOE_NUMERIC
 
@@ -34,6 +34,7 @@ def boosted_model_wins(boosted_folds, base_folds, min_gain=MIN_GAIN_FOR_BOOSTING
     return float(np.mean(gains)) >= min_gain and all(g > 0 for g in gains), gains
 
 
+AVERAGE_MIN_GAIN = 0.003          # the screening rule (fixed before the screen of 1 Nov): a change must add this much on average and in every fold
 AUC_TIE = 0.001                   # configurations within this AUC are tied and the lower Brier score wins (no class-weight distortion for nothing)
 
 
@@ -140,6 +141,9 @@ class Trainer:
         approved = pd.Series(policy.decide(bundle.score(self.train), th), index=self.train.index) == "approve"
         if getattr(model, "kind", "") == "logistic":
             model.reference_ = self.train.loc[approved, model.columns].to_numpy(float).mean(axis=0)
+        elif hasattr(model, "set_reference"):  # the averaged model: every member explains against the same approved applicants
+            model.set_reference(self.train.loc[approved])
+            meta["members"] = {getattr(m, "kind", type(m).__name__): list(m.columns) for m in model.members}
         meta["reference_group"] = f"{int(approved.sum()):,} training loans the model approves"
         meta["inputs_used"] = list(getattr(model, "columns", columns))
         meta["inputs_dropped_for_wrong_sign"] = list(getattr(model, "dropped_", []))
@@ -207,21 +211,32 @@ class Trainer:
         # Selection rule written in DESIGN.md before this code: the scorecard plus sub-grade, unless the boosted model beats it by at least
         # MIN_GAIN_FOR_BOOSTING on average and is ahead in every fold. Results on 2015 are never used here.
         boost_wins, boost_gains = boosted_model_wins(lgg["folds"], scg["folds"])
+        wmap = {f"{f}_woe": scorecard_reason_column(f) for f in SCORECARD_FIELDS}
+        field_of = {**wmap, **{c: c for c in grade_columns}}
+        avg_factory = lambda: LogOddsAverage([LogitPD(SCORECARD_COLUMNS + PLATFORM_COLUMNS, scg["C"], set(PLATFORM_COLUMNS), self.seed, nonpositive=True, top_k=scg["top_k"], positive=PLATFORM_COLUMNS),
+                                              self.lgbm_factory(grade_columns, lgg["params"], lgg["class_weight"], True)()], field_of)
+        avg_aucs, avg_briers, _ = self.evaluate(avg_factory, woe_fold=True)
+        self.log.add("average", "scorecard_plus_boosted_subgrade", {"members": 2}, None, None, avg_aucs, avg_briers, "log-odds average of the scorecard and the boosted model, both with the sub-grade")
+        print("average of the two", [round(a, 4) for a in avg_aucs], round(float(np.mean(avg_aucs)), 4))
         if platform == "sub_grade":
             selected_name = "lightgbm_plus_grade" if boost_wins else "scorecard_plus_grade"
+            avg_wins, avg_gains = boosted_model_wins(avg_aucs, lgg["folds"] if boost_wins else scg["folds"], AVERAGE_MIN_GAIN)
+            if avg_wins:
+                selected_name = "scorecard_boosted_average"
         else:
             selected_name = "lightgbm" if use_lgbm else "woe_scorecard"
-        decision = {"lightgbm_mean_auc": best["auc"], "scorecard_mean_auc": sc["auc"], "chosen_input_set": chosen_set, "monotone_cost_auc": cost, "monotone_declared": len(constrained), "monotone_kept": sorted(keep) if keep_monotone else [], "unconstrained_auc": float(np.mean(aucs0)), "selected": selected_name, "platform_score": platform, "scorecard_plus_subgrade_mean_auc": scg["auc"], "lightgbm_plus_subgrade_mean_auc": lgg["auc"], "boost_gain_per_fold": [round(g, 4) for g in boost_gains], "ablation_lightgbm": {k: round(v["auc"], 4) for k, v in sets.items()},
+        decision = {"lightgbm_mean_auc": best["auc"], "scorecard_mean_auc": sc["auc"], "chosen_input_set": chosen_set, "monotone_cost_auc": cost, "monotone_declared": len(constrained), "monotone_kept": sorted(keep) if keep_monotone else [], "unconstrained_auc": float(np.mean(aucs0)), "selected": selected_name, "platform_score": platform, "scorecard_plus_subgrade_mean_auc": scg["auc"], "lightgbm_plus_subgrade_mean_auc": lgg["auc"], "boost_gain_per_fold": [round(g, 4) for g in boost_gains], "average_mean_auc": float(np.mean(avg_aucs)), "average_fold_auc": [round(a, 4) for a in avg_aucs], "ablation_lightgbm": {k: round(v["auc"], 4) for k, v in sets.items()},
                     "ablation_logistic": {k: round(v["auc"], 4) for k, v in lin.items()}, "grade_alone_auc": float(np.mean(g_aucs))}
         # final bundles
         bundles = {}
-        wmap = {f"{f}_woe": scorecard_reason_column(f) for f in SCORECARD_FIELDS}
         bundles["grade_baseline"], _ = self.finalize("grade_baseline", lambda: LogitPD(["sub_grade_rank"], 1.0, True, self.seed), ["sub_grade_rank"], {}, "platform sub-grade only")
         bundles["woe_scorecard"], _ = self.finalize("woe_scorecard", lambda: LogitPD(SCORECARD_COLUMNS, sc["C"], False, self.seed, nonpositive=True, top_k=sc["top_k"]), SCORECARD_COLUMNS, wmap, "logistic regression on the contract's WoE columns", woe_fold=True)
         # the scorecard with the platform sub-grade: sign rule on the WoE inputs, the sub-grade standardised and required to raise risk
         bundles["scorecard_plus_grade"], _ = self.finalize("scorecard_plus_grade", lambda: LogitPD(SCORECARD_COLUMNS + PLATFORM_COLUMNS, scg["C"], set(PLATFORM_COLUMNS), self.seed, nonpositive=True, top_k=scg["top_k"], positive=PLATFORM_COLUMNS),
                                                            SCORECARD_COLUMNS + PLATFORM_COLUMNS, {**wmap, "sub_grade_rank": "sub_grade_rank"},
                                                            "the scorecard plus the platform's sub-grade (sign rule on the WoE inputs; the sub-grade must raise risk)", woe_fold=True)
+        bundles["scorecard_boosted_average"], _ = self.finalize("scorecard_boosted_average", avg_factory, list(dict.fromkeys(SCORECARD_COLUMNS + PLATFORM_COLUMNS + grade_columns)),
+                                                                {v: v for v in field_of.values()}, "the log-odds average of the scorecard plus sub-grade and the boosted model plus sub-grade", woe_fold=True)
         bundles["lightgbm_plus_grade"], _ = self.finalize("lightgbm_plus_grade", self.lgbm_factory(grade_columns, lgg["params"], lgg["class_weight"], True), grade_columns, {c: c for c in grade_columns}, "gradient boosting on the raw inputs plus the platform's sub-grade")
         bundles["lightgbm"], _ = self.finalize("lightgbm", self.lgbm_factory(INPUT_SETS[chosen_set], best["params"], best["class_weight"], keep_monotone), INPUT_SETS[chosen_set], {c: c for c in INPUT_SETS[chosen_set]}, f"gradient boosting on the '{chosen_set}' inputs")
         for name, b in bundles.items():
