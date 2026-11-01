@@ -1,6 +1,6 @@
 {
-  "model": "woe_scorecard",
-  "note": "logistic regression on the contract's WoE columns",
+  "model": "scorecard_plus_grade",
+  "note": "the scorecard plus the platform's sub-grade (sign rule on the WoE inputs; the sub-grade must raise risk)",
   "contract_version": "1.0.0",
   "fit_cutoff": "2014-12-31",
   "training_loans": 14373,
@@ -8,10 +8,10 @@
     "2013-01-01",
     "2014-12-01"
   ],
-  "git_commit": "cab83b08e721115b77eebc55060bb977aa055d5f",
+  "git_commit": "4fc304c1456200562969d268c936e251f7f3676d",
   "git_dirty": true,
   "training_data_hash": "4ff160121523e1936f71e23824207c51c881b5e92af3db7e8e5385c85708fc44",
-  "training_date": "2026-10-31",
+  "training_date": "2026-11-01",
   "seed": 42,
   "calibration": {
     "36": "platt",
@@ -19,21 +19,21 @@
   },
   "calibration_brier_cross_check": {
     "36": {
-      "platt": 0.11177299117387735,
-      "isotonic": 0.11205398658693261
+      "platt": 0.11062663843504954,
+      "isotonic": 0.11195248026211026
     },
     "60": {
-      "platt": 0.19890744291567175,
-      "isotonic": 0.20085050388744474
+      "platt": 0.19580186819975023,
+      "isotonic": 0.19794590074808102
     }
   },
   "fold_auc": [
-    0.6861,
-    0.7112
+    0.6983,
+    0.7259
   ],
   "fold_brier": [
-    0.1303,
-    0.1407
+    0.1292,
+    0.1391
   ],
   "inputs": [
     "annual_inc_log_woe",
@@ -68,51 +68,31 @@
     "purpose_group_woe",
     "home_ownership_group_woe",
     "verification_status_woe",
-    "term_woe"
+    "term_woe",
+    "sub_grade_rank"
   ],
-  "run_id": "20261031-232004",
+  "run_id": "20261101-090547",
   "thresholds": {
     "approve_below": 0.0625,
     "decline_at_or_above": 0.125
   },
-  "reference_group": "1,548 training loans the model approves",
+  "reference_group": "2,055 training loans the model approves",
   "inputs_used": [
-    "annual_inc_log_woe",
-    "loan_amnt_log_woe",
-    "installment_log_woe",
-    "tot_cur_bal_log_woe",
     "avg_cur_bal_log_woe",
-    "total_rev_hi_lim_log_woe",
     "tot_hi_cred_lim_log_woe",
     "dti_treated_woe",
-    "revol_util_treated_woe",
     "bc_util_treated_woe",
-    "delinq_2yrs_capped_woe",
-    "inq_last_6mths_capped_woe",
-    "open_acc_woe",
-    "total_acc_woe",
     "acc_open_past_24mths_woe",
     "num_tl_op_past_12m_woe",
-    "mths_since_last_delinq_woe",
-    "emp_length_years_woe",
-    "credit_history_months_treated_woe",
     "loan_to_income_treated_woe",
     "installment_to_income_treated_woe",
     "fico_mid_treated_woe",
-    "open_acc_share_treated_woe",
     "recent_accounts_share_treated_woe",
-    "revol_bal_to_income_treated_woe",
-    "purpose_group_woe",
-    "home_ownership_group_woe",
     "verification_status_woe",
-    "term_woe"
+    "term_woe",
+    "sub_grade_rank"
   ],
-  "inputs_dropped_for_wrong_sign": [
-    "revol_bal_log_woe",
-    "mort_acc_capped_woe",
-    "pub_rec_capped_woe",
-    "pub_rec_bankruptcies_capped_woe"
-  ],
+  "inputs_dropped_for_wrong_sign": [],
   "selection": {
     "lightgbm_mean_auc": 0.6997095091067531,
     "scorecard_mean_auc": 0.698665812994538,
@@ -145,7 +125,14 @@
       "total_rev_hi_lim_capped"
     ],
     "unconstrained_auc": 0.6974853309059303,
-    "selected": "woe_scorecard",
+    "selected": "scorecard_plus_grade",
+    "platform_score": "sub_grade",
+    "scorecard_plus_subgrade_mean_auc": 0.7121139277768027,
+    "lightgbm_plus_subgrade_mean_auc": 0.7115899473036442,
+    "boost_gain_per_fold": [
+      0.0032,
+      -0.0042
+    ],
     "ablation_lightgbm": {
       "raw": 0.697,
       "factors": 0.6967,
