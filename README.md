@@ -37,7 +37,7 @@ scripts/deploy_space.sh <username>/<space-name>           # deploy to a private 
 | `contract/` | The five contract files: `analytical_dataset.parquet`, `transform.joblib`, `data_spec.json`, `reference_transforms.csv`, `findings.md` (manager summary + technical appendix) |
 | `DESIGN.md` | Committed before any model code; sections 10 to 12 record what changed |
 | `model_card.md` | Data window, metrics, thresholds, ablation result, known limits (generated from result files) |
-| `notebooks/` | Part A, step by step: audit and target, financial values, reliability, categories and WoE, PCA and factors, stability, the contract |
+| `notebooks/` | Step by step, with the results: Part A in 01 to 07 (audit and target, financial values, reliability, categories and WoE, PCA and factors, stability, the contract); Part B in 08 to 10 (design, training and model selection; evaluation on 2015 and the decision policy; error analysis, drift, `predict.py`, tests and latency) |
 | `docs/` | `decisions.md` (every choice with its evidence), `issue_log.md`, `target_analysis.md`, `field_reliability.md` |
 | `reports/` | One folder per analysis, named like its script in `scripts/` (`a1_...` to `a6_...` for Part A, `b1_...` to `b3_...` for Part B); `experiments.csv` (every trial), `latency.md`, error analysis and drift in `b2_error_analysis_and_drift/` |
 | `outputs/holdout_scores.csv` | `id, pd` for the 2016 holdout |
@@ -49,7 +49,7 @@ scripts/deploy_space.sh <username>/<space-name>           # deploy to a private 
 - Everything fitted (caps, medians, groups, bins, WoE, scaler, PCA, factors) uses only loans issued up to 2014-12-31; 2015 is the out-of-time test and 2016 is scored only. A test checks that 2015 loans change nothing that was fitted.
 - The platform's sub-grade is a model input; its grade letter and interest rate are not. Job title and location are restricted pending a fairness review, and nothing from the servicing file reaches the model (tested).
 - The contract holds real loan rows (`analytical_dataset.parquet`, `reference_transforms.csv`) because the brief requires them: keep this repository private. The Space contains none of them.
-- Scripts produce every result, each into its own folder of labelled charts and tables; the notebooks present Part A using the same code.
+- Scripts produce every result, each into its own folder of labelled charts and tables; the notebooks present both parts using the same code (they read the saved models and never retrain).
 
 ## Hours and tools
 **Hours spent:** about 18 to 24 hours: 4 to 6 understanding the brief and the credit concepts, 8 to 10 on Part A, 6 to 8 on Part B.
