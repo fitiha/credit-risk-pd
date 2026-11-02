@@ -8,10 +8,10 @@
     "2013-01-01",
     "2014-12-01"
   ],
-  "git_commit": "97fb562137ea8e67f6882312cfbefa84ef3e6e9b",
-  "git_dirty": true,
+  "git_commit": "4d83cf8ef66e5ea71c64fccac89aa5f2d256581c",
+  "git_dirty": false,
   "training_data_hash": "4ff160121523e1936f71e23824207c51c881b5e92af3db7e8e5385c85708fc44",
-  "training_date": "2026-11-01",
+  "training_date": "2026-11-02",
   "seed": 42,
   "calibration": {
     "36": "platt",
@@ -112,7 +112,7 @@
     "factor_recent_account_opening",
     "factor_debt_burden"
   ],
-  "run_id": "20261101-102259",
+  "run_id": "20261102-080903",
   "thresholds": {
     "approve_below": 0.0625,
     "decline_at_or_above": 0.125

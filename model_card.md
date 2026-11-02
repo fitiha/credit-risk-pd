@@ -1,8 +1,9 @@
 # Model card: probability of default for unsecured personal loans
 
-**Model:** average of the WoE scorecard and gradient boosting, both with the platform sub-grade, version `scorecard_boosted_average-contract1.0.0-2026-11-01-97fb562`.
+**Developed by:** Natnael Fisseha.
+**Model:** average of the WoE scorecard and gradient boosting, both with the platform sub-grade, version `scorecard_boosted_average-contract1.0.0-2026-11-02-4d83cf8`.
 The average, in log-odds, of two models that both use the platform's sub-grade: a logistic regression on the contract's Weight-of-Evidence (WoE) columns (every WoE weight forced to point in the safe direction, the sub-grade required to raise risk) and gradient boosting with monotone constraints on the treated fields. Calibrated separately for 36- and 60-month loans. Reason codes add the two models' contributions, each measured against a typical approved applicant, so they add up exactly to the score.
-Trained 2026-11-01 on 14,373 loans issued 2013-01-01 to 2014-12-01 (contract fit window: up to 2014-12-31). Seed 42.
+Trained 2026-11-02 on 14,373 loans issued 2013-01-01 to 2014-12-01 (contract fit window: up to 2014-12-31). Seed 42.
 
 ## Intended use
 Estimate the probability that a new applicant for a 1,000 to 40,000 USD, 36- or 60-month unsecured loan will default, to auto-approve, send to manual review or decline.
@@ -64,9 +65,9 @@ Outcomes by region and income band are monitored, not modelled: approval rate by
 - **Dependence on the platform's grading.** The selected model uses the platform's sub-grade, the output of the platform's own risk model. If the platform changes how it grades, the sub-grade's meaning shifts and the model's scores shift with it. The mix of sub-grades is monitored (PSI 2016 against 2015: 0.017) together with the observed default rate by grade band, and the independent scorecard (no platform score) is kept as a fallback, switchable with `platform_score: none` in `config/train.yaml`. A reason code can also cite the sub-grade itself; that explains a decision only by pointing at the platform's own rating, which says less than a specific factor such as the credit score, so the reasons list the other factors after it.
 - **WoE inside the contract was fitted on all pre-2015 labels**, so tuning inside 2013 to 2014 is slightly optimistic (about 0.01 AUC); model selection used WoE refitted inside each fold. Settings (regularisation, number of inputs) were also chosen on the tuning folds, so the tuning-fold AUCs (0.7039, 0.7276 for the selected model) are slightly optimistic; 2015 played no part in any choice and its results above are clean.
 - **Location and job title are not used.** Occupation and place can stand in for characteristics that are not in the data; the data cannot test for it. State is used only for monitoring.
-- **Single-application scoring:** about 43 ms at the median and 48 ms at the 95th percentile on a workstation (limit 100 ms).
+- **Single-application scoring:** about 43 ms at the median and 49 ms at the 95th percentile on a workstation (limit 100 ms).
 - **Application date.** Credit history length is measured from the application date; the demo defaults to mid-2015, inside the period the model was validated on.
 
 ## Lineage
-Git commit `97fb562137ea8e67f6882312cfbefa84ef3e6e9b` (working tree had uncommitted changes); training-data hash `4ff160121523e193...`; contract version 1.0.0; calibration by term (36 months: platt, 60 months: platt);
+Git commit `4d83cf8ef66e5ea71c64fccac89aa5f2d256581c`; training-data hash `4ff160121523e193...`; contract version 1.0.0; calibration by term (36 months: platt, 60 months: platt);
 experiments in `reports/experiments.csv`. A model whose contract version differs from the transform's is refused at load time.
