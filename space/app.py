@@ -2,6 +2,15 @@
 import sys
 from pathlib import Path
 
+try:  # on Hugging Face the Space runs on ZeroGPU hardware, which needs one GPU-decorated function to start; scoring runs on the CPU and never asks for the GPU
+    import spaces
+
+    @spaces.GPU(duration=1)
+    def _gpu_placeholder():
+        pass
+except ImportError:  # running locally
+    pass
+
 root = Path(__file__).resolve().parent
 sys.path.insert(0, str(root / "src"))          # the Space ships the package next to this file
 sys.path.insert(0, str(root.parent / "src"))   # in the repository it lives one level up

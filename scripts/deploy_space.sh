@@ -5,6 +5,6 @@
 set -euo pipefail
 SPACE="${1:?usage: scripts/deploy_space.sh <username>/<space-name>}"
 uv run python scripts/build_space.py
-uv run hf repos create "$SPACE" --repo-type space --space-sdk gradio --private --exist-ok
+uv run hf repos create "$SPACE" --repo-type space --space-sdk gradio --flavor zero-a10g --private --exist-ok   # ZeroGPU: the hardware a free account may use for a Gradio Space; the app itself runs on the CPU
 uv run hf upload "$SPACE" build/space . --repo-type space --commit-message "Deploy the probability-of-default demo"
 echo "Space: https://huggingface.co/spaces/$SPACE"

@@ -39,7 +39,7 @@ sdk_version: 6.31.0
 python_version: "3.12"
 app_file: app.py
 pinned: false
-short_description: Probability of default, decision and reasons for a personal-loan application
+short_description: Default probability, decision and reasons for a loan
 ---
 
 """
