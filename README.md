@@ -23,7 +23,7 @@ uv run hf download metasebiya21/credit-risk-take-home --repo-type dataset --loca
 ## Run
 ```bash
 bash scripts/run_all.sh                                   # everything, from the raw data, in order (a few minutes)
-uv run pytest -q                                          # 141 tests (some need data/, the rest run without it)
+uv run pytest -q                                          # 142 tests (some need data/, the rest run without it)
 uv run python scripts/verify_contract.py                  # the transform reproduces the 50 reference rows to 1e-6 (needs no data)
 uv run python -m credit_risk.model.train --config config/train.yaml                  # train from the contract, one command
 uv run python -m credit_risk.model.predict --json examples/borderline.json           # score one application: pd, decision, version, reasons
@@ -35,8 +35,9 @@ scripts/deploy_space.sh <username>/<space-name>           # deploy to a private 
 | Path | Contents |
 |---|---|
 | `contract/` | The five contract files: `analytical_dataset.parquet`, `transform.joblib`, `data_spec.json`, `reference_transforms.csv`, `findings.md` (manager summary + technical appendix) |
-| `DESIGN.md` | Committed before any model code; section 10 records what changed |
+| `DESIGN.md` | Committed before any model code; sections 10 to 12 record what changed |
 | `model_card.md` | Data window, metrics, thresholds, ablation result, known limits (generated from result files) |
+| `notebooks/` | Part A, step by step: audit and target, financial values, reliability, categories and WoE, PCA and factors, stability, the contract |
 | `docs/` | `decisions.md` (every choice with its evidence), `issue_log.md`, `target_analysis.md`, `field_reliability.md` |
 | `reports/` | One folder per analysis, named like its script in `scripts/` (`a1_...` to `a6_...` for Part A, `b1_...` to `b3_...` for Part B); `experiments.csv` (every trial), `latency.md`, error analysis and drift in `b2_error_analysis_and_drift/` |
 | `outputs/holdout_scores.csv` | `id, pd` for the 2016 holdout |
@@ -46,13 +47,10 @@ scripts/deploy_space.sh <username>/<space-name>           # deploy to a private 
 
 ## Choices worth knowing
 - Everything fitted (caps, medians, groups, bins, WoE, scaler, PCA, factors) uses only loans issued up to 2014-12-31; 2015 is the out-of-time test and 2016 is scored only. A test checks that 2015 loans change nothing that was fitted.
-- The platform's own grade and rate are not model inputs (benchmark and test variant only); job title and location are restricted pending a fairness review; nothing from the servicing file reaches the model (tested).
+- The platform's sub-grade is a model input; its grade letter and interest rate are not. Job title and location are restricted pending a fairness review, and nothing from the servicing file reaches the model (tested).
 - The contract holds real loan rows (`analytical_dataset.parquet`, `reference_transforms.csv`) because the brief requires them: keep this repository private. The Space contains none of them.
-- Scripts are used instead of notebooks; each writes a labelled chart and table folder so the walkthrough can open them directly.
+- Scripts produce every result, each into its own folder of labelled charts and tables; the notebooks present Part A using the same code.
 
-## Hours spent and tools used
-**Hours spent:** *to be filled in by the author with the real figure.*
-**AI tools:** Claude Code (Anthropic) was used throughout, for planning, writing and reviewing code and tests, running the analyses, and drafting the documents; the Hugging Face, testing and statistics skills it offers were consulted for the demo and tests. Every analytical choice and its evidence is written down in `docs/decisions.md` so it can be explained and challenged.
-
-## Hugging Face Space
-Link: *to be added after deployment.* Check that it is awake the day before the interview (`scripts/check_space.sh <username>/<space-name>`): free Spaces sleep when idle.
+## Hours and tools
+**Hours spent:** about 18 to 24 hours: 4 to 6 understanding the brief and the credit concepts, 8 to 10 on Part A, 6 to 8 on Part B.
+**AI tools:** Claude Code (Anthropic), used as a coding assistant for code, tests, analyses and documentation.
