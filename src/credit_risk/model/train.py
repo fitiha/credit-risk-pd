@@ -59,6 +59,7 @@ class Trainer:
         self.cfg = cfg
         self.seed = cfg["seed"]
         self.run_id = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        self.git_sha, self.git_dirty = git_state()  # recorded before the run writes its own logs, so a clean checkout is reported as clean
         self.log = ExperimentLog("reports/experiments.csv", self.run_id)
         self.transformer, self.spec, frame = training_frames(cfg)
         self.frame = add_grade_rank(frame)
@@ -128,10 +129,9 @@ class Trainer:
         method = chosen
         calibrator = PerTermCalibrator(chosen).fit(oof.to_numpy(), y.to_numpy(), terms)
         model = factory().fit(self.train, self.train.defaulted)
-        sha, dirty = git_state()
         meta = {"model": name, "note": note, "contract_version": self.transformer.contract_version, "fit_cutoff": self.cfg["fit_cutoff"],
                 "training_loans": int(len(self.train)), "training_years": [str(self.train.issue_d.min().date()), str(self.train.issue_d.max().date())],
-                "git_commit": sha, "git_dirty": dirty, "training_data_hash": data_hash(self.train, columns if not any(c.endswith("_woe") for c in columns) else []),
+                "git_commit": self.git_sha, "git_dirty": self.git_dirty, "training_data_hash": data_hash(self.train, columns if not any(c.endswith("_woe") for c in columns) else []),
                 "training_date": dt.date.today().isoformat(), "seed": self.seed, "calibration": method, "calibration_brier_cross_check": scores,
                 "fold_auc": [round(a, 4) for a in aucs], "fold_brier": [round(b, 4) for b in briers], "inputs": list(columns), "run_id": self.run_id}
         th = policy.thresholds(self.cfg)
