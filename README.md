@@ -1,8 +1,10 @@
 # Credit-risk take-home: data contract and probability-of-default model
 
+**Author:** Natnael Fisseha
+
 A probability-of-default (PD) model for unsecured personal loans, built in two parts that share a data contract.
 **Part A (data scientist):** audit and clean three data sources, treat financial values, rate field reliability, group categories and compute WoE, run PCA and factor analysis, check stability, and package everything as a versioned contract (`contract/`).
-**Part B (ML engineer):** build the model on that contract (grade baseline, WoE scorecard, monotone gradient boosting), evaluate it out of time, set a profit-based decision policy, and serve it with reason codes, tests and a demo.
+**Part B (ML engineer):** build the model on that contract (grade baseline, WoE scorecard, monotone gradient boosting, and the selected average of the two with the platform's sub-grade), evaluate it out of time, set a profit-based decision policy, and serve it with reason codes, tests and a demo.
 
 ## Results in five lines
 - 39 data problems found and fixed or flagged (`docs/issue_log.md`), including two columns that reveal the outcome and about 1,500 mis-scaled amounts; one unit error in the 2016 file would have corrupted every holdout score and a guard now rejects it.

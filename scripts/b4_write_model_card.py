@@ -125,6 +125,7 @@ dependence = (f"- **Dependence on the platform's grading.** The selected model u
               f"A reason code can also cite the sub-grade itself; that explains a decision only by pointing at the platform's own rating, which says less than a specific factor such as the credit score, so the reasons list the other factors after it.\n") if uses_grade else ""
 card = f"""# Model card: probability of default for unsecured personal loans
 
+**Developed by:** Natnael Fisseha.
 **Model:** {model_label}, version `{meta['model']}-contract{meta['contract_version']}-{meta['training_date']}-{meta['git_commit'][:7]}`.
 {desc}
 Trained {meta['training_date']} on {meta['training_loans']:,} loans issued {meta['training_years'][0]} to {meta['training_years'][1]} (contract fit window: up to {meta['fit_cutoff']}). Seed {meta['seed']}.
