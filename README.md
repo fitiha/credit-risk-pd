@@ -54,3 +54,6 @@ scripts/deploy_space.sh <username>/<space-name>           # deploy to a private 
 ## Hours and tools
 **Hours spent:** about 18 to 24 hours: 4 to 6 understanding the brief and the credit concepts, 8 to 10 on Part A, 6 to 8 on Part B.
 **AI tools:** Claude Code (Anthropic), used as a coding assistant for code, tests, analyses and documentation.
+
+## Live demo
+[huggingface.co/spaces/kalesi/credit-risk-pd](https://huggingface.co/spaces/kalesi/credit-risk-pd): the form, the three example applicants, and the PD, decision, reasons and model details for each application, scored by the same `predict.py`.
