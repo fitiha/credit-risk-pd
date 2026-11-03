@@ -8,7 +8,7 @@ A probability-of-default (PD) model for unsecured personal loans, built in two p
 
 ## Results in five lines
 - 39 data problems found and fixed or flagged (`docs/issue_log.md`), including two columns that reveal the outcome and about 1,500 mis-scaled amounts; one unit error in the 2016 file would have corrupted every holdout score and a guard now rejects it.
-- Out-of-time AUC on 2015 loans (never used to choose anything): **0.737 for the selected model, the average of a WoE scorecard and gradient boosting that both use the platform's sub-grade, against 0.722 for the platform's grade alone** (gain +0.015, 95% interval +0.011 to +0.019). Without any platform score the scorecard reaches 0.718 and only matches the grade. A screen of further ideas (new features, per-term models, other algorithms) found nothing else that helps: the limit is the information in an application. Funding the same share of loans as the model's thresholds (44%), the model earns $0.52M more than the grade on 2015 (interval +$0.12M to +$0.92M).
+- Out-of-time AUC on 2015 loans (never used to tune or select a model): **0.737 for the selected model, the average of a WoE scorecard and gradient boosting that both use the platform's sub-grade, against 0.722 for the platform's grade alone** (its sub-grade, calibrated per term like our models; gain +0.015, 95% interval +0.011 to +0.019). Without any platform score the scorecard reaches 0.718 and only matches the grade. A screen of further ideas (new features, per-term models, other algorithms) found nothing else that helps: the limit is the information in an application. Funding the same share of loans as the model's thresholds (44%), the model earns $0.52M more than the grade on 2015 (interval +$0.12M to +$0.92M).
 - Predictions are calibrated per term (slopes 0.99 and 0.94); thresholds from the profit assumptions: approve below 6.25%, decline at 12.5% or more; the approved band is 17.6% of 2015 H2 loans with a 4.4% default rate.
 - The 2016 holdout is stable against 2015 (PSI 0.010 for the PD); scores are in `outputs/holdout_scores.csv`. The price of the sub-grade is a dependence on the platform's grading, monitored and with an independent fallback (`platform_score: none`).
 - A scored application takes about 43 ms (limit 100 ms), reasons included. The factor scores helped the boosted model by +0.003 AUC and the scorecard not at all (`model_card.md`).
@@ -28,7 +28,7 @@ uv run python scripts/verify_contract.py                  # the transform reprod
 uv run python -m credit_risk.model.train --config config/train.yaml                  # train from the contract, one command
 uv run python -m credit_risk.model.predict --json examples/borderline.json           # score one application: pd, decision, version, reasons
 uv run python space/app.py                                # the demo, locally
-scripts/deploy_space.sh <username>/<space-name>           # deploy to a private Hugging Face Space (after `uv run hf auth login`)
+scripts/deploy_space.sh <username>/<space-name>           # deploy to a Hugging Face Space, created private (after `uv run hf auth login`)
 ```
 
 ## What is where
@@ -57,3 +57,4 @@ scripts/deploy_space.sh <username>/<space-name>           # deploy to a private 
 
 ## Live demo
 [huggingface.co/spaces/kalesi/credit-risk-pd](https://huggingface.co/spaces/kalesi/credit-risk-pd): the form, the three example applicants, and the PD, decision, reasons and model details for each application, scored by the same `predict.py`.
+It runs on Hugging Face's free ZeroGPU hardware, because free accounts can no longer host a Gradio Space on the free CPU tier; scoring runs on the CPU and never requests the GPU.

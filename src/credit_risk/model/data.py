@@ -59,7 +59,8 @@ def split(frame, start=None, end=None):
 
 
 def data_hash(frame, columns):
-    """A fingerprint of the training data (values of the model inputs, labels and ids), saved with the model."""
+    """A fingerprint of the training data (ids, labels and the values of `columns`), saved with the model.
+    Models on WoE columns pass no columns, so their hash covers ids and labels; the values come from the versioned contract."""
     h = hashlib.sha256()
     h.update(pd.util.hash_pandas_object(frame[["id"] + list(columns) + ["defaulted"]], index=False).to_numpy().tobytes())
     return h.hexdigest()
