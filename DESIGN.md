@@ -82,7 +82,8 @@ Scoring one application must take under 100 ms: the transform takes about 20 ms,
 - **Thresholds** were kept at the profit-based 6.25% and 12.5%. The profit-maximising decline threshold on 2015 H1 was 11.0%, and break-even earns 94% of that optimum, a small loss; break-even follows from the stated assumptions and not from one half-year.
 - **The data contract changed twice during the build** (the binning of count fields, and the recoding of zero delinquency months; `docs/issue_log.md` entries 38 and 39), both found in review before the model was finalised. The contract version stays 1.0.0 because it had not been released to anyone.
 - **Not built, as planned or by choice:** the experiment log is a CSV, not MLflow; no production API or Docker (out of scope); no test of disparate impact because the data has no demographic fields.
-- **Latency** is 43 ms at the median and 49 ms at the 95th percentile for the whole call (two models plus their explanations), inside the 100 ms budget.
+- **Latency** is 46 ms at the median and 57 ms at the 95th percentile for the whole call (two models plus their explanations, and the live input checks), inside the 100 ms budget.
+- **Live scoring rejects impossible applications** (for example more open accounts than accounts in total, or a grade that does not match the sub-grade; none of the 30,000 historical loans breaks these rules) and warns about doubtful ones (a value outside the fitted caps, a utilisation that looks like a fraction), which are still scored. Found by sending about 40 awkward inputs to the demo before submission.
 
 ## 11. Revision 2: building on the sub-grade (decided before any code change)
 **Why.** The first version kept the platform's grade out of the model. Evaluated fairly, that model only matches the old system: on 2015 loans AUC 0.718 against 0.722 for grade plus term (difference not significant), and a policy driven by the grade earned slightly more. The aim is a model that

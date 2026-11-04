@@ -11,7 +11,7 @@ A probability-of-default (PD) model for unsecured personal loans, built in two p
 - Out-of-time AUC on 2015 loans (never used to tune or select a model): **0.737 for the selected model, the average of a WoE scorecard and gradient boosting that both use the platform's sub-grade, against 0.722 for the platform's grade alone** (its sub-grade, calibrated per term like our models; gain +0.015, 95% interval +0.011 to +0.019). Without any platform score the scorecard reaches 0.718 and only matches the grade. A screen of further ideas (new features, per-term models, other algorithms) found nothing else that helps: the limit is the information in an application. Funding the same share of loans as the model's thresholds (44%), the model earns $0.52M more than the grade on 2015 (interval +$0.12M to +$0.92M).
 - Predictions are calibrated per term (slopes 0.99 and 0.94); thresholds from the profit assumptions: approve below 6.25%, decline at 12.5% or more; the approved band is 17.6% of 2015 H2 loans with a 4.4% default rate.
 - The 2016 holdout is stable against 2015 (PSI 0.010 for the PD); scores are in `outputs/holdout_scores.csv`. The price of the sub-grade is a dependence on the platform's grading, monitored and with an independent fallback (`platform_score: none`).
-- A scored application takes about 43 ms (limit 100 ms), reasons included. The factor scores helped the boosted model by +0.003 AUC and the scorecard not at all (`model_card.md`).
+- A scored application takes about 46 ms (limit 100 ms), reasons and input checks included. The factor scores helped the boosted model by +0.003 AUC and the scorecard not at all (`model_card.md`).
 
 ## Setup
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12 (uv installs it). Dependencies are pinned in `uv.lock`.
@@ -23,7 +23,7 @@ uv run hf download metasebiya21/credit-risk-take-home --repo-type dataset --loca
 ## Run
 ```bash
 bash scripts/run_all.sh                                   # everything, from the raw data, in order (a few minutes)
-uv run pytest -q                                          # 142 tests (some need data/, the rest run without it)
+uv run pytest -q                                          # 159 tests (some need data/, the rest run without it)
 uv run python scripts/verify_contract.py                  # the transform reproduces the 50 reference rows to 1e-6 (needs no data)
 uv run python -m credit_risk.model.train --config config/train.yaml                  # train from the contract, one command
 uv run python -m credit_risk.model.predict --json examples/borderline.json           # score one application: pd, decision, version, reasons

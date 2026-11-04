@@ -17,7 +17,7 @@ zip code of an unseen area,scored,0.0917,0.0,review,
 loan amount 10x too large,rejected with a clear message,,,,'loan_amnt': 1 value(s) outside 1000 to 40000 (e.g. 150000)
 term 48 months (not offered),rejected with a clear message,,,,"'term': 1 value(s) not allowed (e.g. np.int64(48)); allowed: [36, 60]"
 loan amount $500 (below product minimum),rejected with a clear message,,,,'loan_amnt': 1 value(s) outside 1000 to 40000 (e.g. 500)
-income negative,rejected with a clear message,,,,'annual_inc': 1 value(s) outside 1000 to 10000000 (e.g. -1000)
+income negative,rejected with a clear message,,,,annual_inc cannot be negative (got -1)
 utilisation sent as a fraction (0.55),scored,0.0911,-0.0006,review,
 required field removed (annual_inc),rejected with a clear message,,,,missing required field 'annual_inc'
 loan amount sent as text,rejected with a clear message,,,,'loan_amnt' must be a number (got 'abc')

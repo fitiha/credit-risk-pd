@@ -41,6 +41,25 @@ def test_bad_input_is_explained_and_nothing_is_scored(demo):
     assert "NOT SCORED" in html and "term" in md
 
 
+def test_the_explanation_says_what_the_pd_means_and_what_moved_it(demo):
+    _, _, md, _ = score_form(demo.predictor, demo.field_names, *values(demo, "borderline"))
+    assert "About 9 in 100" in md and "manual check" not in md and "reviews the application" in md
+    assert "What moved the score" in md and "▲ raises" in md and "Platform risk sub-grade" in md
+
+
+def test_a_value_outside_the_valid_range_is_explained_instead_of_blocked_by_the_form(demo):
+    pd_text, html, md, meta = score_form(demo.predictor, demo.field_names, *values(demo, "borderline", loan_amnt=90000))
+    assert pd_text == "-" and "NOT SCORED" in html and "loan_amnt" in md and meta == {}
+
+
+def test_an_unexpected_error_is_shown_as_not_scored_never_as_a_stack_trace(demo, monkeypatch):
+    def broken(record, strict=True):
+        raise ValueError("boom")
+    monkeypatch.setattr(demo.predictor, "predict", broken)
+    pd_text, html, md, meta = score_form(demo.predictor, demo.field_names, *values(demo, "borderline"))
+    assert pd_text == "-" and "NOT SCORED" in html and "could not be scored" in md and meta == {}
+
+
 def test_empty_optional_fields_become_missing_not_empty_text():
     assert clean_value("") is None and clean_value("  ") is None and clean_value(float("nan")) is None and clean_value(0) == 0
     assert clean_value("RENT") == "RENT"
